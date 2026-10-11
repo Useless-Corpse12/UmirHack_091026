@@ -54,8 +54,8 @@ namespace back.Migrations
                     b.Property<Guid?>("DishId")
                         .HasColumnType("uuid");
 
-                    b.Property<int>("ProductId")
-                        .HasColumnType("integer");
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
 
                     b.Property<decimal>("Quanity")
                         .HasColumnType("numeric");
@@ -198,6 +198,9 @@ namespace back.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<bool>("SupplyStatus")
+                        .HasColumnType("boolean");
+
                     b.HasKey("Id");
 
                     b.ToTable("Supplies");
@@ -234,6 +237,9 @@ namespace back.Migrations
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<bool>("IsVerified")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()

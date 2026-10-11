@@ -12,8 +12,8 @@ using back.Data;
 namespace back.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20261011052441_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20261011183009_InitialClean")]
+    partial class InitialClean
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -57,8 +57,8 @@ namespace back.Migrations
                     b.Property<Guid?>("DishId")
                         .HasColumnType("uuid");
 
-                    b.Property<int>("ProductId")
-                        .HasColumnType("integer");
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
 
                     b.Property<decimal>("Quanity")
                         .HasColumnType("numeric");
@@ -201,6 +201,9 @@ namespace back.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<bool>("SupplyStatus")
+                        .HasColumnType("boolean");
+
                     b.HasKey("Id");
 
                     b.ToTable("Supplies");
@@ -237,6 +240,9 @@ namespace back.Migrations
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<bool>("IsVerified")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()

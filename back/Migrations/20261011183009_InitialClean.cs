@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace back.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialClean : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -76,6 +76,7 @@ namespace back.Migrations
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     SupplyNumber = table.Column<string>(type: "text", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    SupplyStatus = table.Column<bool>(type: "boolean", nullable: false),
                     RestaurantId = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
@@ -103,7 +104,8 @@ namespace back.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     Email = table.Column<string>(type: "text", nullable: false),
-                    PasswordHash = table.Column<string>(type: "text", nullable: false)
+                    PasswordHash = table.Column<string>(type: "text", nullable: false),
+                    IsVerified = table.Column<bool>(type: "boolean", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -173,7 +175,7 @@ namespace back.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    ProductId = table.Column<int>(type: "integer", nullable: false),
+                    ProductId = table.Column<Guid>(type: "uuid", nullable: false),
                     Quanity = table.Column<decimal>(type: "numeric", nullable: false),
                     DishId = table.Column<Guid>(type: "uuid", nullable: true)
                 },
