@@ -10,6 +10,6 @@ public class Dish : Entity
 
 public class DishIngredientLink : Entity
 {
-    public int ProductId { get; set; }
+    public Guid ProductId { get; set; }
     public decimal Quanity { get; set; }
 }

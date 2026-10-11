@@ -1,7 +1,21 @@
+using System.Text;
 using back.Data;
+using back.Infrastructure.Security.Hasher;
+using back.Infrastructure.Security.JwtTokenGenerator;
+using back.Infrastructure.Services.EmailService;
+using back.Infrastructure.Services.VerificationCode;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+
 
 var builder = WebApplication.CreateBuilder(args);
+
+#region SlonikDb
+
+
+
 
 var dbConfig = builder.Configuration.GetSection("db");
 
@@ -17,6 +31,48 @@ var dbConnString = $"Host={builder.Configuration.GetValue<string>("db:host")};" 
 builder.Services.AddDbContext<AppDbContext>(options => 
     options.UseNpgsql(dbConnString));
 
+
+#endregion
+
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+
+var salt = builder.Configuration.GetValue<string>("salt") 
+           ?? throw new InvalidOperationException("Соль не найдена!");
+
+builder.Services.AddSingleton<IPasswordHasher>(new PasswordHasher(salt));
+
+builder.Services.AddMemoryCache();
+
+builder.Services.AddScoped<IEmailSender, EmailSender>();
+
+builder.Services.AddScoped<IVerificationCodeService, VerificationCodeWorker>();
+
+builder.Services.AddScoped<ITokenGenerator, TokenGenerator>();
+
+
+builder.Services.AddMediatR(cfg => 
+    cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
+
+var jwtSecretKey = builder.Configuration["JwtSettings:SecretKey"];
+var jwtIssuer = builder.Configuration["JwtSettings:Issuer"];
+var jwtAudience = builder.Configuration["JwtSettings:Audience"];
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecretKey))
+        };
+    });
+
+builder.Services.AddAuthorization();
 // Add services to the container.
 
 builder.Services.AddControllers();

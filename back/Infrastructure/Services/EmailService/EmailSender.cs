@@ -47,11 +47,32 @@ public class EmailSender : IEmailSender
 
     public async Task SendRegistrationCodeAsync(string toEmail, string code)
     {
-        var subject = "Код подтверждения DOCSeal";
+        var subject = "Код подтверждения SlopGrenade_MonitoringSystem";
         var body = $@"
             <html>
-            <body style='font-family: Arial, sans-serif;'>
-            </body>
+            <body style='font-family: Arial, sans-serif; padding: 20px;'>
+            <h2 style='color: #333;'>Подтверждение регистрации</h2>
+            <p>Ваш код подтверждения:</p>
+            
+            <div style='
+                background-color: #f4f4f4; 
+                border: 1px solid #ddd; 
+                border-radius: 8px; 
+                padding: 15px; 
+                text-align: center; 
+                font-size: 28px; 
+                font-weight: bold; 
+                letter-spacing: 4px; 
+                color: #2c3e50;
+                margin: 20px 0;'>
+                {code}
+            </div>
+            
+            <p style='color: #666; font-size: 14px;'>
+                Код действителен в течение 10 минут.<br>
+                Если вы не запрашивали регистрацию, просто проигнорируйте это письмо.
+            </p>
+        </body>
             </html>";
 
         await SendEmailAsync(toEmail, subject, body);

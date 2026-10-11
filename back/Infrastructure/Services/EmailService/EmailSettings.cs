@@ -7,6 +7,6 @@ public class EmailSettings
         public string Username { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
         public string FromEmail { get; set; } = string.Empty;
-        public string FromName { get; set; } = "DOCSeal";
+        public string FromName { get; set; } = "SlopGrenade_MonitoringSystem";
         public bool EnableSsl { get; set; } = true;
 }

@@ -32,8 +32,7 @@ public class AuthorityController(IMediator mediator) : ApiController
         var token = await mediator.Send(cmd);
         return Ok( new
             {
-                //accessToken = token.AccessToken,
-                //refreshToken = token.RefreshToken
+                accessToken = token
             }
         );
     }
