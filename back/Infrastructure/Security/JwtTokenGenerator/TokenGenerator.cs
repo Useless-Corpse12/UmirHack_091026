@@ -4,7 +4,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
-//using DOCSeal.Domain.Entities;
+using back.Domain.Entities;
 
 namespace back.Infrastructure.Security.JwtTokenGenerator;
 
@@ -12,7 +12,7 @@ public class TokenGenerator(IConfiguration configuration) : ITokenGenerator
 {
     private readonly IConfiguration _configuration = configuration;
 
-    public string GenerateAccessToken(User user) //Почекать
+    public string GenerateAccessToken(User user)
     {
         var secretKey = _configuration["JwtSettings:SecretKey"];
         var issuer = _configuration["JwtSettings:Issuer"];
@@ -25,7 +25,6 @@ public class TokenGenerator(IConfiguration configuration) : ITokenGenerator
         var claims = new[]
         {
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Name, user.Name),
             new Claim(ClaimTypes.Email, user.Email)
         };
 

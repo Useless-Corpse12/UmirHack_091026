@@ -9,7 +9,7 @@ public class Supply : Entity
     public ICollection<SupplyItem> Batches { get; set; } = new List<SupplyItem>();
 }
 
-public class SupplyItem
+public class SupplyItem : Entity
 {
     public Guid ProductId { get; set; }
     public decimal Quantity { get; set; }

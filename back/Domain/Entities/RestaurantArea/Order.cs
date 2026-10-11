@@ -9,7 +9,7 @@ public class Order : Entity
     public ICollection<OrderItem> Items { get; set; } = new List<OrderItem>();
     public ICollection<Dish> Dishes { get; set; } = new List<Dish>();
 }
-public class OrderItem
+public class OrderItem :  Entity
 {
     public Guid ProductId { get; set; }
     public int Quantity { get; set; }

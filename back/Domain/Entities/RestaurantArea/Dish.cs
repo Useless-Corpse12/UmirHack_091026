@@ -8,7 +8,7 @@ public class Dish : Entity
     public List<DishIngredientLink> Ingredients { get; set; } = new();
 }
 
-public class DishIngredientLink
+public class DishIngredientLink : Entity
 {
     public int ProductId { get; set; }
     public decimal Quanity { get; set; }
