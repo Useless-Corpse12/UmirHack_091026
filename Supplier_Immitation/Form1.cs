@@ -1,5 +1,4 @@
-using System.Net.Http.Headers;
-using System.Text;
+using System.Net.Http.Json;
 using System.Text.Json;
 
 namespace Supplier_Immitation;
@@ -8,8 +7,10 @@ public partial class Form1 : Form
 {
     private TextBox txtApiAddress;
     private TextBox txtRestaurantId;
-    private TextBox txtApiSecret;
+    private TextBox txtApiKey;
+    private Button btnGetProducts;
     private Button btnSendSupply;
+    private DataGridView dgvProducts;
     private TextBox txtLog;
 
     public Form1()
@@ -21,49 +22,100 @@ public partial class Form1 : Form
     private void InitializeCustomComponents()
     {
         this.Text = "Supplier Imitation (Поставщик)";
-        this.Size = new System.Drawing.Size(600, 500);
+        this.Size = new System.Drawing.Size(700, 600);
         this.StartPosition = FormStartPosition.CenterScreen;
 
         int y = 20;
         int labelWidth = 120;
-        int textBoxWidth = 400;
+        int inputWidth = 500;
 
         var lblAddress = new Label { Text = "Адрес API:", Location = new System.Drawing.Point(20, y), Width = labelWidth };
-        txtApiAddress = new TextBox { Location = new System.Drawing.Point(150, y), Width = textBoxWidth, Text = "https://localhost:7001" };
+        txtApiAddress = new TextBox { Location = new System.Drawing.Point(150, y), Width = inputWidth, Text = "https://localhost:5067" };
         this.Controls.Add(lblAddress);
         this.Controls.Add(txtApiAddress);
         y += 35;
 
         var lblRestId = new Label { Text = "RestaurantId:", Location = new System.Drawing.Point(20, y), Width = labelWidth };
-        txtRestaurantId = new TextBox { Location = new System.Drawing.Point(150, y), Width = textBoxWidth, Text = "00000000-0000-0000-0000-000000000000" };
+        txtRestaurantId = new TextBox { Location = new System.Drawing.Point(150, y), Width = inputWidth, Text = "00000000-0000-0000-0000-000000000000" };
         this.Controls.Add(lblRestId);
         this.Controls.Add(txtRestaurantId);
         y += 35;
 
-        var lblSecret = new Label { Text = "ApiSecret:", Location = new System.Drawing.Point(20, y), Width = labelWidth };
-        txtApiSecret = new TextBox { Location = new System.Drawing.Point(150, y), Width = textBoxWidth };
-        this.Controls.Add(lblSecret);
-        this.Controls.Add(txtApiSecret);
+        var lblApiKey = new Label { Text = "ApiKey (Secret):", Location = new System.Drawing.Point(20, y), Width = labelWidth };
+        txtApiKey = new TextBox { Location = new System.Drawing.Point(150, y), Width = inputWidth, UseSystemPasswordChar = true };
+        this.Controls.Add(lblApiKey);
+        this.Controls.Add(txtApiKey);
         y += 50;
+
+        btnGetProducts = new Button
+        {
+            Text = "1. Получить список продуктов",
+            Location = new System.Drawing.Point(150, y),
+            Width = 240,
+            Height = 35
+        };
+        btnGetProducts.Click += BtnGetProducts_Click;
+        this.Controls.Add(btnGetProducts);
 
         btnSendSupply = new Button
         {
-            Text = "Получить продукты и отправить поставку",
-            Location = new System.Drawing.Point(150, y),
-            Width = textBoxWidth,
-            Height = 40
+            Text = "2. Отправить поставку",
+            Location = new System.Drawing.Point(410, y),
+            Width = 240,
+            Height = 35,
+            Enabled = false
         };
         btnSendSupply.Click += BtnSendSupply_Click;
         this.Controls.Add(btnSendSupply);
-        y += 60;
+        y += 50;
+
+        dgvProducts = new DataGridView
+        {
+            Location = new System.Drawing.Point(20, y),
+            Width = 640,
+            Height = 250,
+            AllowUserToAddRows = false,
+            AllowUserToDeleteRows = false,
+            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+            RowHeadersVisible = false
+        };
+
+        dgvProducts.Columns.Add(new DataGridViewCheckBoxColumn
+        {
+            Name = "Select",
+            HeaderText = "Выбрать",
+            Width = 80
+        });
+        dgvProducts.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            Name = "ProductName",
+            HeaderText = "Название продукта",
+            ReadOnly = true,
+            Width = 300
+        });
+        dgvProducts.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            Name = "Quantity",
+            HeaderText = "Количество",
+            Width = 120
+        });
+        dgvProducts.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            Name = "ProductId",
+            HeaderText = "ID",
+            Visible = false
+        });
+
+        this.Controls.Add(dgvProducts);
+        y += 270;
 
         txtLog = new TextBox
         {
             Multiline = true,
             ScrollBars = ScrollBars.Vertical,
             Location = new System.Drawing.Point(20, y),
-            Width = 540,
-            Height = 250,
+            Width = 640,
+            Height = 120,
             ReadOnly = true,
             BackColor = System.Drawing.Color.White
         };
@@ -75,39 +127,38 @@ public partial class Form1 : Form
         txtLog.AppendText($"[{DateTime.Now:HH:mm:ss}] {message}\r\n");
     }
 
-    private async void BtnSendSupply_Click(object sender, EventArgs e)
+    private async void BtnGetProducts_Click(object sender, EventArgs e)
     {
+        btnGetProducts.Enabled = false;
         btnSendSupply.Enabled = false;
+        dgvProducts.Rows.Clear();
         txtLog.Clear();
 
         string apiAddress = txtApiAddress.Text.TrimEnd('/');
-        string restIdStr = txtRestaurantId.Text.Trim();
-        string apiSecret = txtApiSecret.Text.Trim();
+        string restId = txtRestaurantId.Text.Trim();
+        string apiKey = txtApiKey.Text.Trim();
 
-        if (!Guid.TryParse(restIdStr, out Guid restaurantId))
+        if (!Guid.TryParse(restId, out Guid restaurantId))
         {
-            Log("Неверный формат RestaurantId (должен быть GUID)");
-            btnSendSupply.Enabled = true;
+            Log("Ошибка: Неверный формат RestaurantId.");
+            btnGetProducts.Enabled = true;
             return;
         }
 
         using var httpClient = new HttpClient();
-        httpClient.BaseAddress = new Uri(apiAddress);
-
-        if (!string.IsNullOrEmpty(apiSecret))
-        {
-            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiSecret);
-        }
 
         try
         {
-            Log("Получение списка продуктов...");
-            var response = await httpClient.GetAsync($"/api/product/restaurant/{restaurantId}");
+            Log("Запрос списка продуктов...");
+            var url = $"{apiAddress}/api/supply/GetProducts?RestaurantId={restaurantId}&ApiKey={Uri.EscapeDataString(apiKey)}";
+
+            var response = await httpClient.GetAsync(url);
 
             if (!response.IsSuccessStatusCode)
             {
-                Log($" Ошибка получения продуктов: {(int)response.StatusCode} {response.ReasonPhrase}");
-                btnSendSupply.Enabled = true;
+                var errText = await response.Content.ReadAsStringAsync();
+                Log($"Ошибка получения: {(int)response.StatusCode} {errText}");
+                btnGetProducts.Enabled = true;
                 return;
             }
 
@@ -116,50 +167,89 @@ public partial class Form1 : Form
 
             if (products == null || products.Count == 0)
             {
-                Log("Продукты не найдены для этого ресторана");
-                btnSendSupply.Enabled = true;
+                Log("Продукты не найдены.");
+                btnGetProducts.Enabled = true;
                 return;
             }
 
             Log($"Получено продуктов: {products.Count}");
+
             foreach (var p in products)
             {
-                Log($"   - {p.Name} (ID: {p.Id})");
+                dgvProducts.Rows.Add(false, p.ProductName, 10, p.ProductId);
             }
 
-            Log("\nГенерация случайной поставки...");
-            var random = new Random();
-            var itemsCount = random.Next(1, Math.Min(3, products.Count) + 1);
-            var selectedProducts = products.OrderBy(_ => random.Next()).Take(itemsCount).ToList();
+            btnSendSupply.Enabled = true;
+        }
+        catch (Exception ex)
+        {
+            Log($"Критическая ошибка: {ex.Message}");
+        }
+        finally
+        {
+            btnGetProducts.Enabled = true;
+        }
+    }
 
-            var supply = new
+    private async void BtnSendSupply_Click(object sender, EventArgs e)
+    {
+        btnSendSupply.Enabled = false;
+        Log("\nФормирование и отправка поставки...");
+
+        string apiAddress = txtApiAddress.Text.TrimEnd('/');
+        string restId = txtRestaurantId.Text.Trim();
+        Guid restaurantId = Guid.Parse(restId);
+
+        var items = new List<object>();
+
+        foreach (DataGridViewRow row in dgvProducts.Rows)
+        {
+            if (row.Cells["Select"].Value is true)
             {
-                RestaurantId = restaurantId,
-                SupplyNumber = $"SUP-{DateTime.UtcNow:yyyyMMdd-HHmmss}",
-                Items = selectedProducts.Select(p => new { ProductId = p.Id, Quantity = random.Next(10, 100) }).ToList()
+                if (decimal.TryParse(row.Cells["Quantity"].Value?.ToString(), out decimal qty) && qty > 0)
+                {
+                    items.Add(new
+                    {
+                        productId = Guid.Parse(row.Cells["ProductId"].Value.ToString()),
+                        quantity = qty
+                    });
+                }
+            }
+        }
+
+        if (items.Count == 0)
+        {
+            Log("Не выбрано ни одного продукта или количество равно 0.");
+            btnSendSupply.Enabled = true;
+            return;
+        }
+
+        Log($"Выбрано позиций: {items.Count}");
+
+        using var httpClient = new HttpClient();
+
+        try
+        {
+            var payload = new
+            {
+                restaurantId = restaurantId,
+                supplyNumber = $"SUP-{DateTime.UtcNow:yyyyMMdd-HHmmss}",
+                items = items
             };
 
-            Log($"Номер поставки: {supply.SupplyNumber}");
-            foreach (var item in supply.Items)
+            var json = JsonSerializer.Serialize(payload);
+            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+            var response = await httpClient.PostAsync($"{apiAddress}/api/supply/incoming", content);
+
+            if (response.IsSuccessStatusCode)
             {
-                var prodName = products.First(p => p.Id == item.ProductId).Name;
-                Log($"   - {prodName}: {item.Quantity} шт.");
-            }
-
-            Log("\n Отправка поставки на сервер...");
-            var supplyJson = JsonSerializer.Serialize(supply);
-            var content = new StringContent(supplyJson, Encoding.UTF8, "application/json");
-
-            var postResponse = await httpClient.PostAsync("/api/supply/incoming", content);
-
-            if (postResponse.IsSuccessStatusCode)
-            {
-                Log("Поставка успешно создана на сервере");
+                Log("Поставка успешно отправлена и создана на сервере!");
             }
             else
             {
-                var errText = await postResponse.Content.ReadAsStringAsync();
-                Log($"Ошибка при создании поставки: {(int)postResponse.StatusCode} {errText}");
+                var errText = await response.Content.ReadAsStringAsync();
+                Log($"Ошибка отправки: {(int)response.StatusCode} {errText}");
             }
         }
         catch (Exception ex)
@@ -175,8 +265,7 @@ public partial class Form1 : Form
 
 public class ProductDto
 {
-    public Guid Id { get; set; }
-    public string Name { get; set; } = null!;
-    public Guid RestaurantId { get; set; }
+    public Guid ProductId { get; set; }
+    public string ProductName { get; set; } = null!;
     public int ShelfLife { get; set; }
 }
