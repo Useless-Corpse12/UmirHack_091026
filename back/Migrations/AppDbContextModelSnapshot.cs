@@ -119,15 +119,15 @@ namespace back.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<Guid>("RestaurantId")
                         .HasColumnType("uuid");
-
-                    b.Property<int>("ShelfLife")
-                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 

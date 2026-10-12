@@ -12,5 +12,5 @@ public record SupplierGetProductsCommand(
 public record ProductItemDto(
     Guid ProductId,
     string ProductName,
-    int ShelfLife
+    DateTime ExpiresAt
     );
