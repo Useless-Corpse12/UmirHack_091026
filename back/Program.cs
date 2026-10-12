@@ -5,7 +5,6 @@ using back.Infrastructure.Security.JwtTokenGenerator;
 using back.Infrastructure.Services.EmailService;
 using back.Infrastructure.Services.VerificationCode;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 

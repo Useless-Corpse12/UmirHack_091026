@@ -1,24 +1,26 @@
 ﻿using back.Data;
 using back.Domain.Entities;
+using back.Infrastructure.Security.Hasher;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace back.Application.RestaurantArea;
 
 public class SupplyIncomingHandler(
-    AppDbContext dbContext
+    AppDbContext dbContext,
+    IPasswordHasher passHasher
 ) : IRequestHandler<SupplyIncomingCommand, Guid>
 {
     private readonly AppDbContext _dbContext = dbContext;
 
     public async Task<Guid> Handle(SupplyIncomingCommand cmd, CancellationToken cancellationToken)
     {
-        var restaurantExists = await _dbContext.Restaurants
-            .AnyAsync(r => r.Id == cmd.RestaurantId, cancellationToken);
-
-        if (!restaurantExists)
+        var restaurant = await _dbContext.Restaurants
+            .FirstOrDefaultAsync(r => r.Id == cmd.RestaurantId, cancellationToken);
+        
+        if (restaurant==null || !passHasher.Validate(cmd.ApiKey,restaurant.ApiSecret))
         {
-            throw new Exception($"Ресторан с ID {cmd.RestaurantId} не найден");
+            throw new Exception($"Неверный Id или пароль");
         }
 
         var supply = new Supply
