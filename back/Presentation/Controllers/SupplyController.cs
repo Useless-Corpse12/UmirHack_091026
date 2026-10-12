@@ -8,7 +8,7 @@ namespace back.Presentation.Controllers;
 public class SupplyController(IMediator mediator) : ApiController
 {
     [HttpPost("incoming")]
-    [Authorize]
+    [AllowAnonymous]
     public async Task<IActionResult> CreateSupply(SupplyIncomingCommand cmd)
     {
         if (!ModelState.IsValid)
@@ -26,6 +26,24 @@ public class SupplyController(IMediator mediator) : ApiController
         catch (Exception ex)
         {
             return BadRequest(new { Message = ex.Message });
+        }
+    }
+
+    [HttpGet("[action]")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetProducts(SupplierGetProductsCommand cmd)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        try
+        {
+            var products = await mediator.Send(cmd);
+            return Ok(products);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new {Message = ex.Message});
         }
     }
 }
