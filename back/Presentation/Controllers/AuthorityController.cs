@@ -1,7 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using back.Application.Authority;
+using back.Application.Authority.Authorize;
 
 namespace back.Presentation.Controllers;
 

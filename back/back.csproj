@@ -22,4 +22,9 @@
         <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.23.0" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="Application\Authority\User\" />
+      <Folder Include="Application\RestaurantArea\Supplies\" />
+    </ItemGroup>
+
 </Project>

@@ -2,11 +2,13 @@ using System.Text;
 using back.Data;
 using back.Infrastructure.Security.Hasher;
 using back.Infrastructure.Security.JwtTokenGenerator;
+using back.Infrastructure.Services.DaikonBaseContext;
 using back.Infrastructure.Services.EmailService;
 using back.Infrastructure.Services.VerificationCode;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using StackExchange.Redis;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -32,6 +34,20 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 
 #endregion
+
+#region DaikonBase
+
+var redisConnectionString = builder.Configuration.GetValue<string>("Redis:ConnectionString") 
+                            ?? "localhost:6379";
+
+builder.Services.AddSingleton<IConnectionMultiplexer>(
+    ConnectionMultiplexer.Connect(redisConnectionString));
+
+builder.Services.AddSingleton<IFoodStock, FoodStock>();
+
+#endregion
+
+builder.Services.AddScoped<IDaikonInitializer, DaikonInitializer>();
 
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 
@@ -79,6 +95,12 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var initializer = scope.ServiceProvider.GetRequiredService<DaikonInitializer>();
+    await initializer.StockInitializeAsync();
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

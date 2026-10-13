@@ -3,21 +3,15 @@ using StackExchange.Redis;
 
 namespace back.Infrastructure.Services.DaikonBaseContext;
 
-public record ProductItem(
-    Guid SupplyId,
-    Guid ProductId,
-    string ProductName,
-    int Quantity,
-    DateTime ExpiresAt
-);
-
+public record ProductItem(Guid SupplyId, Guid ProductId, string ProductName, int Quantity, DateTime ExpiresAt );
+public record OrderItemDto(Guid ProductId, int Quantity, Guid SupplyId);
 public record DishItem(Guid ProductId, string ProductName, int Quantity);
 
 public record DishInfo(string Name, List<DishItem> Recipe);
 
 public record CartReservation(Guid DishId, string DishName, List<DishItem> Recipe, List<ProductItem> ReservedProducts );
 
-public class FoodStock
+public class FoodStock : IFoodStock
 {
     private readonly IDatabase _db;
 
@@ -185,8 +179,67 @@ public class FoodStock
             .ToList();
     }
 
+    public async Task DestroyRottingProductAsync(Guid resId, List<(Guid ProductId, Guid SupplyId, int Quantity)> products)
+    {
+        var key = StockKey(resId);
+        var stock = (await _db.SortedSetRangeByScoreAsync(key))
+            .Select(j => JsonSerializer.Deserialize<ProductItem>(j.ToString())!)
+            .ToList();
+
+        foreach (var (prodId, supId, qty) in products)
+        {
+            int left = qty;
+            foreach (var batch in stock.Where(i => i.ProductId == prodId && i.SupplyId == supId)
+                         .OrderBy(i => i.ExpiresAt))
+            {
+                if (left <= 0) break;
+
+                int take = Math.Min(left, batch.Quantity);
+                await _db.SortedSetRemoveAsync(key, JsonSerializer.Serialize(batch));
+
+                if (batch.Quantity > take)
+                    await _db.SortedSetAddAsync(key,
+                        JsonSerializer.Serialize(batch with { Quantity = batch.Quantity - take }),
+                        new DateTimeOffset(batch.ExpiresAt).ToUnixTimeSeconds());
+
+                left -= take;
+            }
+        }
+    }
+    
+    public async Task RemoveProductsByOrderItemsAsync(Guid restId, List<OrderItemDto> orderItems)
+    {
+        var key = StockKey(restId);
+        var stock = (await _db.SortedSetRangeByScoreAsync(key))
+            .Select(j => JsonSerializer.Deserialize<ProductItem>(j.ToString())!)
+            .ToList();
+
+        foreach (var item in orderItems)
+        {
+            int left = item.Quantity;
+            foreach (var batch in stock.Where(i => i.ProductId == item.ProductId && i.SupplyId == item.SupplyId)
+                         .OrderBy(i => i.ExpiresAt))
+            {
+                if (left <= 0) break;
+
+                int take = Math.Min(left, batch.Quantity);
+                await _db.SortedSetRemoveAsync(key, JsonSerializer.Serialize(batch));
+
+                if (batch.Quantity > take)
+                    await _db.SortedSetAddAsync(key,
+                        JsonSerializer.Serialize(batch with { Quantity = batch.Quantity - take }),
+                        new DateTimeOffset(batch.ExpiresAt).ToUnixTimeSeconds());
+
+                left -= take;
+            }
+        }
+    }
+    
     #endregion
 
+    
+    
+    
     #region Theory (Menu & Analytics)
 
     public async Task SetDishAsync(Guid restId, List<(Guid DishId, string DishName, List<DishItem> Recipe)> newDishes)

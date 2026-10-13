@@ -3,7 +3,7 @@ using back.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
-namespace back.Application.RestaurantArea;
+namespace back.Application.Authority.Restaurants;
 
 public class CreateRestaurantHandler(AppDbContext dbContext)
     : IRequestHandler<CreateRestaurantCommand, Guid>

@@ -7,7 +7,7 @@ using back.Infrastructure.Services.VerificationCode;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
-namespace back.Application.Authority;
+namespace back.Application.Authority.Authorize;
 
 public class RegistrationSelfHandler(
     AppDbContext dbContext, 

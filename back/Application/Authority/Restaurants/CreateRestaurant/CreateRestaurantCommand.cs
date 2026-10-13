@@ -1,6 +1,6 @@
 ﻿using MediatR;
 
-namespace back.Application.RestaurantArea;
+namespace back.Application.Authority.Restaurants;
 
 public record CreateRestaurantCommand(
     Guid UserId,
