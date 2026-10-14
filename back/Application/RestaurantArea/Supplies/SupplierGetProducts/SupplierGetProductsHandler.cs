@@ -29,7 +29,7 @@ public class SupplierGetProductsHandler
             .Select(p => new ProductItemDto(
                 p.Id,
                 p.Name,
-                p.ExpiresAt))
+                p.ShelfLifeDays))
             .ToListAsync(cnt);
 
         return products;

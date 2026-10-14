@@ -11,5 +11,5 @@ public record SupplyIncomingCommand(
 
 public record SupplyItemDto(
     Guid ProductId,
-    decimal Quantity
+    int Quantity
 );

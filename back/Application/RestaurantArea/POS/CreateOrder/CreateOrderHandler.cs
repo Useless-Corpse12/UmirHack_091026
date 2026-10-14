@@ -1,5 +1,4 @@
-﻿using back.Application.RestaurantArea.POS.CreateOrder;
-using back.Data;
+﻿using back.Data;
 using back.Domain.Entities;
 using back.Infrastructure.Services.DaikonBaseContext;
 using MediatR;
@@ -27,24 +26,17 @@ public class CreateOrderHandler(
             CreatedAt = DateTime.UtcNow,
             Status = "Completed",
             Items = new List<OrderItem>(),
-            Dishes = new List<Dish>()
+            Dishes = new List<OrderDish>() 
         };
 
         foreach (var reservation in reservations)
         {
-            var dish = new Dish
-            {
-                Id = reservation.DishId,
-                Name = reservation.DishName,
-                RestaurantId = cmd.RestaurantId
-            };
-            order.Dishes.Add(dish);
-
             foreach (var product in reservation.ReservedProducts)
             {
                 order.Items.Add(new OrderItem
                 {
                     Id = Guid.NewGuid(),
+                    OrderId = order.Id,
                     ProductId = product.ProductId,
                     SupplyId = product.SupplyId,
                     Quantity = product.Quantity

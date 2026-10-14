@@ -42,8 +42,8 @@ public class DaikonInitializer:IDaikonInitializer
                     return (
                         i.ProductId,
                         prod.Name,
-                        (int)i.Quantity, 
-                        prod.ExpiresAt 
+                        i.Quantity, 
+                        i.ExpiresAt
                     );
                 }).ToList();
 
@@ -74,7 +74,7 @@ public class DaikonInitializer:IDaikonInitializer
             var items = group.Select(r => (
                 r.ProductId,
                 r.SupplyItemId, 
-                (int)r.Quantity 
+                r.Quantity 
             )).ToList();
             
             await _foodStock.DestroyRottingProductAsync(group.Key, items);

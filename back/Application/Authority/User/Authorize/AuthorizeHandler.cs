@@ -22,7 +22,7 @@ public class AuthorizationHandler(
         if (user == null || !passwordHasher.Validate(cmd.Password, user.PasswordHash))
             throw new Exception("Неверный логин или пароль");
         
-        var accessToken = tokenGenerator.GenerateAccessToken(user);
+        var accessToken = tokenGenerator.GenerateAccessToken(user.Id, user.Email);
         
         
         return accessToken;

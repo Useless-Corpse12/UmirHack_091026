@@ -29,7 +29,6 @@ public class CreateRestaurantHandler(AppDbContext dbContext)
 
         var userRestaurant = new UserRestaurant
         {
-            Id = Guid.NewGuid(),
             UserId = cmd.UserId,
             RestaurantId = restaurant.Id,
             Role = UserRole.Owner

@@ -16,7 +16,6 @@ public class CreatePOSHandler(AppDbContext dbContext, IPasswordHasher passwordHa
         );
 
         var cashierRole = new UserRestaurant{
-            Id = Guid.NewGuid(),
             UserId = cashierUser.Id,
             RestaurantId = cmd.restaurantId,
             Role = UserRole.Cashier

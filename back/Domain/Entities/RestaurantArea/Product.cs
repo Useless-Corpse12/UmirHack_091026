@@ -1,9 +1,7 @@
 namespace back.Domain.Entities;
 
-public class Product: Entity
+public class Product: RestaurantEntity
 {
     public string Name { get; set; } = null!;
-    public Guid RestaurantId { get; set; }
-    public DateTime ExpiresAt { get; set; }
-    
+    public int ShelfLifeDays { get; set; }
 }

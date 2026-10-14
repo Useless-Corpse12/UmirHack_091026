@@ -1,5 +1,4 @@
 using System.IdentityModel.Tokens.Jwt;
-
 using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
@@ -11,7 +10,30 @@ public class TokenGenerator(IConfiguration configuration) : ITokenGenerator
 {
     private readonly IConfiguration _configuration = configuration;
 
-    public string GenerateAccessToken(User user)
+    public string GenerateAccessToken(Guid userId,string email)
+    {
+        var claims = new List<Claim>
+        {
+            new("UserId", userId.ToString()),
+            new("Email", email)
+        };
+
+        return BuildToken(claims);
+    }
+
+    public string GeneratePOSToken(Guid restId, Guid userId)
+    {
+        var claims = new List<Claim>
+        {
+            new("UserId", userId.ToString()),
+            new("RestaurantId", restId.ToString()),
+            new(ClaimTypes.Role, "Cashier")
+        };
+
+        return BuildToken(claims);
+    }
+
+    private string BuildToken(List<Claim> claims)
     {
         var secretKey = _configuration["JwtSettings:SecretKey"];
         var issuer = _configuration["JwtSettings:Issuer"];
@@ -21,12 +43,6 @@ public class TokenGenerator(IConfiguration configuration) : ITokenGenerator
 
         var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
-
-        var claims = new List<Claim>
-        {
-            new("UserId", user.Id.ToString()), 
-            new("Email", user.Email)
-        };
 
         var token = new JwtSecurityToken(
             issuer: issuer,
@@ -38,5 +54,4 @@ public class TokenGenerator(IConfiguration configuration) : ITokenGenerator
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
-
 }
