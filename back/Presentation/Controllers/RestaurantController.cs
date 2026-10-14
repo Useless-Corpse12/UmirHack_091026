@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using back.Application.Authority.Restaurants;
+using back.Application.Authority.Restaurants.DirectInvite;
 
 namespace back.Presentation.Controllers;
 
@@ -58,6 +59,27 @@ public class RestaurantController(IMediator mediator) : ApiController
             return Ok(new
             {
                 Message = "Кассовая точка создана"
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { Message = ex.Message });
+        }
+    }
+    
+    [HttpPost("[action]")]
+    [Authorize]
+    public async Task<IActionResult> DirectInvite(DirectInviteCommand cmd)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        try
+        {
+            await mediator.Send(cmd);
+            return Ok(new
+            {
+                Message = $"Код успешно отправлен на {cmd.email}"
             });
         }
         catch (Exception ex)
