@@ -98,8 +98,9 @@ var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
-    var initializer = scope.ServiceProvider.GetRequiredService<DaikonInitializer>();
+    var initializer = scope.ServiceProvider.GetRequiredService<IDaikonInitializer>();
     await initializer.StockInitializeAsync();
+    await initializer.StashInitializeAsync();
 }
 
 // Configure the HTTP request pipeline.

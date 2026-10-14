@@ -7,11 +7,14 @@ public class DaikonInitializer:IDaikonInitializer
 {
     private readonly AppDbContext _db;
     private readonly FoodStock _foodStock;
-
-    public DaikonInitializer(AppDbContext db, FoodStock foodStock) 
+    private readonly IAnalStash _analStash;
+    
+    public DaikonInitializer(AppDbContext db, FoodStock foodStock,IAnalStash analStash) 
     {
         _db = db;
         _foodStock = foodStock;
+        _analStash = analStash;
+        
     }
 
     public async Task StockInitializeAsync()
@@ -75,6 +78,37 @@ public class DaikonInitializer:IDaikonInitializer
             )).ToList();
             
             await _foodStock.DestroyRottingProductAsync(group.Key, items);
+        }
+    }
+
+    public async Task StashInitializeAsync()
+    {
+        var orders = await _db.Orders
+            .Include(o => o.Items)
+            .Include(o => o.Dishes)
+            .ToListAsync();
+
+        foreach (var order in orders)
+        {
+            await _analStash.AddOrderAsync(order.RestaurantId, order, order.CreatedAt);
+        }
+
+        var supplies = await _db.Supplies
+            .Include(s => s.Batches)
+            .Where(s => s.SupplyStatus == true)
+            .ToListAsync();
+
+        foreach (var supply in supplies)
+        {
+            await _analStash.AddSupplyAsync(supply.RestaurantId, supply, supply.CreatedAt);
+        }
+
+        var rotRecords = await _db.RotRecords
+            .ToListAsync();
+
+        foreach (var rot in rotRecords)
+        {
+            await _analStash.AddRotAsync(rot.RestaurantId, rot, rot.CreatedAt);
         }
     }
 }
