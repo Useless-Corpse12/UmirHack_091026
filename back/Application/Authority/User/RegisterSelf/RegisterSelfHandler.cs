@@ -42,7 +42,7 @@ public class RegistrationSelfHandler(
             return existingUser.Id;
         }
         
-        var user = User.Create(Guid.NewGuid(), cmd.Email, cmd.Password);
+        var user = User.Create(Guid.NewGuid(), cmd.Email, passwordHasher.Create(cmd.Password));
         
         dbContext.Users.Add(user);
         await dbContext.SaveChangesAsync(cnt);
