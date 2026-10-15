@@ -3,13 +3,12 @@ using StackExchange.Redis;
 
 namespace back.Infrastructure.Services.DaikonBaseContext;
 
-public record ProductItem(Guid SupplyId, Guid ProductId, string ProductName, int Quantity, DateTime ExpiresAt );
+public record ProductItem(Guid SupplyId, Guid ProductId, string ProductName, int Quantity, DateTime ExpiresAt);
 public record OrderItemDto(Guid ProductId, int Quantity, Guid SupplyId);
 public record DishItem(Guid ProductId, string ProductName, int Quantity);
 
 public record DishInfo(string Name, List<DishItem> Recipe);
-
-public record CartReservation(Guid DishId, string DishName, List<DishItem> Recipe, List<ProductItem> ReservedProducts );
+public record CartReservation(Guid DishId, string DishName, List<DishItem> Recipe, List<ProductItem> ReservedProducts);
 
 public class FoodStock : IFoodStock
 {
@@ -30,16 +29,16 @@ public class FoodStock : IFoodStock
 
     #region Products
 
-    public async Task AddProductsBySupplyAsync(
+   public async Task AddProductsBySupplyAsync(
         Guid restId,
         Guid supplyId,
-        List<(Guid ProductId, string Name, int Quantity, DateTime ExpiresAt)> products)
+        List<(Guid ProductId, string Name, int FactQuantity, DateTime ExpiresAt)> products)
     {
         var key = StockKey(restId);
         
         foreach (var p in products)
         {
-            var item = new ProductItem(supplyId, p.ProductId, p.Name, p.Quantity, p.ExpiresAt);
+            var item = new ProductItem(supplyId, p.ProductId, p.Name, p.FactQuantity, p.ExpiresAt);
             var json = JsonSerializer.Serialize(item);
             var score = new DateTimeOffset(p.ExpiresAt).ToUnixTimeSeconds();
             
@@ -237,9 +236,6 @@ public class FoodStock : IFoodStock
     
     #endregion
 
-    
-    
-    
     #region Theory (Menu & Analytics)
 
     public async Task SetDishAsync(Guid restId, List<(Guid DishId, string DishName, List<DishItem> Recipe)> newDishes)
@@ -302,7 +298,7 @@ public class FoodStock : IFoodStock
                 stopList.Add(dishId);
             }
         }
-
+        
         return stopList;
     }
 

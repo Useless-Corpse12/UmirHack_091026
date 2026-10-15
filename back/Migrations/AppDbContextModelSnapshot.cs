@@ -158,6 +158,10 @@ namespace back.Migrations
                     b.Property<int>("ShelfLifeDays")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Units")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.HasKey("Id");
 
                     b.HasIndex("RestaurantId");
@@ -235,8 +239,8 @@ namespace back.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<bool>("SupplyStatus")
-                        .HasColumnType("boolean");
+                    b.Property<int>("SupplyStatus")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -253,6 +257,9 @@ namespace back.Migrations
 
                     b.Property<DateTime>("ExpiresAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("FactQuantity")
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("ProductId")
                         .HasColumnType("uuid");

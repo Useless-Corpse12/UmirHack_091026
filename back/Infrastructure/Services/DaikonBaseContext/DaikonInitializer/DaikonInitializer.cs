@@ -1,37 +1,51 @@
 using back.Data;
+using back.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace back.Infrastructure.Services.DaikonBaseContext;
 
-public class DaikonInitializer:IDaikonInitializer
+public class DaikonInitializer : IDaikonInitializer
 {
     private readonly AppDbContext _db;
     private readonly FoodStock _foodStock;
     private readonly IAnalStash _analStash;
-    
-    public DaikonInitializer(AppDbContext db, FoodStock foodStock,IAnalStash analStash) 
+
+    public DaikonInitializer(AppDbContext db, FoodStock foodStock, IAnalStash analStash)
     {
         _db = db;
         _foodStock = foodStock;
         _analStash = analStash;
-        
     }
 
     public async Task StockInitializeAsync()
     {
         var allProducts = await _db.Products.ToDictionaryAsync(p => p.Id);
-
         var restaurants = await _db.Restaurants.ToListAsync();
-        var allDishes = await _db.Dishes.ToListAsync();
-        var dishesForRedis = allDishes.Select(d => (d.Id, d.Name, new List<DishItem>())).ToList();
 
         foreach (var rest in restaurants)
         {
+            // 1. Блюда — фильтруем по ресторану и подгружаем ингредиенты
+            var dishes = await _db.Dishes
+                .Include(d => d.Ingredients)
+                    .ThenInclude(ing => ing.Product)
+                .Where(d => d.RestaurantId == rest.Id)
+                .ToListAsync();
+
+            var dishesForRedis = dishes.Select(d => (
+                d.Id,
+                d.Name,
+                d.Ingredients.Select(ing => new DishItem(
+                    ing.ProductId,
+                    ing.Product?.Name ?? "Unknown",
+                    ing.Quantity
+                )).ToList()
+            )).ToList();
+
             await _foodStock.SetDishAsync(rest.Id, dishesForRedis);
 
             var supplies = await _db.Supplies
                 .Include(s => s.Batches)
-                .Where(s => s.RestaurantId == rest.Id)
+                .Where(s => s.RestaurantId == rest.Id && s.SupplyStatus == (int)SupplyStatus.GotIt)
                 .ToListAsync();
 
             foreach (var supply in supplies)
@@ -42,7 +56,7 @@ public class DaikonInitializer:IDaikonInitializer
                     return (
                         i.ProductId,
                         prod.Name,
-                        i.Quantity, 
+                        i.FactQuantity,
                         i.ExpiresAt
                     );
                 }).ToList();
@@ -54,7 +68,7 @@ public class DaikonInitializer:IDaikonInitializer
 
         var completedOrders = await _db.Orders
             .Include(o => o.Items)
-            .Where(o => o.Status == "Completed")
+            .Where(o => o.RestaurantId != null && o.Status == "Completed")
             .ToListAsync();
 
         foreach (var order in completedOrders)
@@ -64,7 +78,7 @@ public class DaikonInitializer:IDaikonInitializer
         }
 
         var rotRecords = await _db.RotRecords
-            .Where(r => r.Status == true) 
+            .Include(r => r.SupplyItem)
             .ToListAsync();
 
         var rotByRestaurant = rotRecords.GroupBy(r => r.RestaurantId);
@@ -73,10 +87,10 @@ public class DaikonInitializer:IDaikonInitializer
         {
             var items = group.Select(r => (
                 r.ProductId,
-                r.SupplyItemId, 
-                r.Quantity 
+                r.SupplyItem.SupplyId,
+                r.Quantity
             )).ToList();
-            
+
             await _foodStock.DestroyRottingProductAsync(group.Key, items);
         }
     }
@@ -95,7 +109,7 @@ public class DaikonInitializer:IDaikonInitializer
 
         var supplies = await _db.Supplies
             .Include(s => s.Batches)
-            .Where(s => s.SupplyStatus == true)
+            .Where(s => s.SupplyStatus == (int)SupplyStatus.GotIt)
             .ToListAsync();
 
         foreach (var supply in supplies)
@@ -103,9 +117,7 @@ public class DaikonInitializer:IDaikonInitializer
             await _analStash.AddSupplyAsync(supply.RestaurantId, supply, supply.CreatedAt);
         }
 
-        var rotRecords = await _db.RotRecords
-            .ToListAsync();
-
+        var rotRecords = await _db.RotRecords.ToListAsync();
         foreach (var rot in rotRecords)
         {
             await _analStash.AddRotAsync(rot.RestaurantId, rot, rot.CreatedAt);
