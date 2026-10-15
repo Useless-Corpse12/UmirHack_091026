@@ -4,7 +4,7 @@ using System.Text;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Tokens;
 
-namespace DOCSeal.Infrastructure.Services.InviteCodeGenerator;
+namespace back.Infrastructure.Services.InviteCodeWorker;
 
 public class InviteCodeWorker(IConfiguration config, IMemoryCache mem) : IInviteCodeWorker
 {

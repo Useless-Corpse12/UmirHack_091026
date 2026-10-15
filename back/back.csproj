@@ -18,6 +18,9 @@
         <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.23.0" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.Design" Version="1.1.0" />
+        <PackageReference Include="Quartz" Version="4.5.0" />
+        <PackageReference Include="Quartz.Extensions.DependencyInjection" Version="4.5.0" />
+        <PackageReference Include="Quartz.Extensions.Hosting" Version="4.5.0" />
         <PackageReference Include="StackExchange.Redis" Version="3.4.0" />
         <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.23.0" />
     </ItemGroup>

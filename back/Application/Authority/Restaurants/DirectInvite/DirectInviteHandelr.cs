@@ -1,6 +1,6 @@
 using back.Data;
 using back.Infrastructure.Services.EmailService;
-using DOCSeal.Infrastructure.Services.InviteCodeGenerator;
+using back.Infrastructure.Services.InviteCodeWorker;
 using MediatR;
 namespace back.Application.Authority.Restaurants.DirectInvite;
 

@@ -1,4 +1,4 @@
-namespace DOCSeal.Infrastructure.Services.InviteCodeGenerator;
+namespace back.Infrastructure.Services.InviteCodeWorker;
 
 public interface IInviteCodeWorker
 {

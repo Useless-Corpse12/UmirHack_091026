@@ -1,5 +1,6 @@
 using back.Data;
 using back.Domain.Entities;
+using back.Infrastructure.Services.Workers; // <-- ДОБАВЛЕНО для IRotScheduler
 using Microsoft.EntityFrameworkCore;
 
 namespace back.Infrastructure.Services.DaikonBaseContext;
@@ -7,14 +8,20 @@ namespace back.Infrastructure.Services.DaikonBaseContext;
 public class DaikonInitializer : IDaikonInitializer
 {
     private readonly AppDbContext _db;
-    private readonly FoodStock _foodStock;
+    private readonly IFoodStock _foodStock;
     private readonly IAnalStash _analStash;
+    private readonly IRotScheduler _rotScheduler;
 
-    public DaikonInitializer(AppDbContext db, FoodStock foodStock, IAnalStash analStash)
+    public DaikonInitializer(
+        AppDbContext db, 
+        IFoodStock foodStock, 
+        IAnalStash analStash, 
+        IRotScheduler rotScheduler) 
     {
         _db = db;
         _foodStock = foodStock;
         _analStash = analStash;
+        _rotScheduler = rotScheduler;
     }
 
     public async Task StockInitializeAsync()
@@ -24,7 +31,6 @@ public class DaikonInitializer : IDaikonInitializer
 
         foreach (var rest in restaurants)
         {
-            // 1. Блюда — фильтруем по ресторану и подгружаем ингредиенты
             var dishes = await _db.Dishes
                 .Include(d => d.Ingredients)
                     .ThenInclude(ing => ing.Product)
@@ -45,7 +51,8 @@ public class DaikonInitializer : IDaikonInitializer
 
             var supplies = await _db.Supplies
                 .Include(s => s.Batches)
-                .Where(s => s.RestaurantId == rest.Id && s.SupplyStatus == (int)SupplyStatus.GotIt)
+                .Where(s => s.RestaurantId == rest.Id && 
+                           (s.SupplyStatus == (int)SupplyStatus.GotIt || s.SupplyStatus == (int)SupplyStatus.Partial))
                 .ToListAsync();
 
             foreach (var supply in supplies)
@@ -93,6 +100,8 @@ public class DaikonInitializer : IDaikonInitializer
 
             await _foodStock.DestroyRottingProductAsync(group.Key, items);
         }
+
+        await _rotScheduler.ScheduleAllFromStockAsync();
     }
 
     public async Task StashInitializeAsync()

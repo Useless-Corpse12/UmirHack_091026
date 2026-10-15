@@ -5,9 +5,12 @@ using back.Infrastructure.Security.JwtTokenGenerator;
 using back.Infrastructure.Services.DaikonBaseContext;
 using back.Infrastructure.Services.EmailService;
 using back.Infrastructure.Services.VerificationCode;
+using back.Infrastructure.Services.Workers;
+using back.Infrastructure.Services.InviteCodeWorker;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Quartz;
 using StackExchange.Redis;
 
 
@@ -44,10 +47,20 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(
     ConnectionMultiplexer.Connect(redisConnectionString));
 
 builder.Services.AddSingleton<IFoodStock, FoodStock>();
+builder.Services.AddSingleton<IAnalStash, AnalStash>();
+
+builder.Services.AddScoped<IDaikonInitializer, DaikonInitializer>();
 
 #endregion
 
-builder.Services.AddScoped<IDaikonInitializer, DaikonInitializer>();
+
+#region Quartz & RotScheduler
+builder.Services.AddQuartz();
+builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
+
+builder.Services.AddScoped<IRotScheduler, RotScheduler>();
+#endregion
+
 
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 
@@ -64,6 +77,7 @@ builder.Services.AddScoped<IVerificationCodeService, VerificationCodeWorker>();
 
 builder.Services.AddScoped<ITokenGenerator, TokenGenerator>();
 
+builder.Services.AddScoped<IInviteCodeWorker, InviteCodeWorker>();
 
 builder.Services.AddMediatR(cfg => 
     cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
