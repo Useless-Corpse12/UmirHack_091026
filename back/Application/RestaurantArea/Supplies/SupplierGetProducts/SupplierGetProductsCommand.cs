@@ -6,11 +6,10 @@ public record SupplierGetProductsCommand(
     Guid RestaurantId,
     string ApiKey
 ) : IRequest<List<ProductItemDto>>;
- 
-    
 
 public record ProductItemDto(
     Guid ProductId,
     string ProductName,
-    int ShelfLifeDays
-    );
+    int ShelfLifeDays,
+    string Units
+);

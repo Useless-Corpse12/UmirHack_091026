@@ -5,13 +5,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace back.Application.RestaurantArea;
 
-public class SupplierGetProductsHandler
-(
-    AppDbContext dbContext,
-    IPasswordHasher passHasher
-    ) : IRequestHandler<SupplierGetProductsCommand,List<ProductItemDto>>
+public class SupplierGetProductsHandler(AppDbContext dbContext, IPasswordHasher passHasher) : IRequestHandler<SupplierGetProductsCommand, List<ProductItemDto>>
 {
-    private readonly AppDbContext _dbContext=dbContext;
+    private readonly AppDbContext _dbContext = dbContext;
 
     public async Task<List<ProductItemDto>> Handle(
         SupplierGetProductsCommand cmd, CancellationToken cnt
@@ -19,9 +15,10 @@ public class SupplierGetProductsHandler
     {
         var restaurant = await _dbContext.Restaurants
             .FirstOrDefaultAsync(r => r.Id == cmd.RestaurantId, cnt);
-        if (restaurant==null || !passHasher.Validate(cmd.ApiKey,restaurant.ApiSecret))
+
+        if (restaurant == null || !passHasher.Validate(cmd.ApiKey, restaurant.ApiSecret))
         {
-            throw new Exception($"Неверный Id или пароль");
+            throw new Exception("Неверный Id или пароль");
         }
 
         var products = await _dbContext.Products
@@ -29,7 +26,9 @@ public class SupplierGetProductsHandler
             .Select(p => new ProductItemDto(
                 p.Id,
                 p.Name,
-                p.ShelfLifeDays))
+                p.ShelfLifeDays,
+                p.Units
+            ))
             .ToListAsync(cnt);
 
         return products;
