@@ -17,9 +17,10 @@ public class FoodStock : IFoodStock
     private readonly IDatabase _db;
     private readonly IHubContext<NotificationHub> _hub;
 
-    public FoodStock(IConnectionMultiplexer redis)
+    public FoodStock(IConnectionMultiplexer redis,IHubContext<NotificationHub> hub)
     {
         _db = redis.GetDatabase();
+        _hub = hub;
     }
 
     #region Keys
@@ -265,12 +266,15 @@ public class FoodStock : IFoodStock
 
     public async Task SetDishAsync(Guid restId, List<(Guid DishId, string DishName, List<DishItem> Recipe)> newDishes)
     {
+        if (newDishes == null) return;
+
         var key = DishesKey(restId);
         await _db.KeyDeleteAsync(key);
         
         foreach (var dish in newDishes)
         {
-            var info = new DishInfo(dish.DishName, dish.Recipe);
+            var safeRecipe = dish.Recipe ?? new List<DishItem>();
+            var info = new DishInfo(dish.DishName, safeRecipe);
             var json = JsonSerializer.Serialize(info);
             await _db.HashSetAsync(key, dish.DishId.ToString(), json);
         }
@@ -376,18 +380,44 @@ public class FoodStock : IFoodStock
     #region Notifications
     private async Task NotifyProductsAsync(Guid restId)
     {
-        var products = await GetProductsAsync(restId);
-        await _hub.Clients.Group($"restaurant_{restId}").SendAsync("ProductsUpdated", products);
+        try
+        {
+            if (_hub == null) return;
+            var products = await GetProductsAsync(restId);
+            await _hub.Clients.Group($"restaurant_{restId}").SendAsync("ProductsUpdated", products);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[FoodStock] Ошибка уведомления продуктов: {ex.Message}");
+        }
     }
+
     private async Task NotifyStopListAsync(Guid restId)
     {
-        var stopList = await GetStopListAsync(restId);
-        await _hub.Clients.Group($"restaurant_{restId}").SendAsync("StopListUpdated", stopList);
+        try
+        {
+            if (_hub == null) return;
+            var stopList = await GetStopListAsync(restId);
+            await _hub.Clients.Group($"restaurant_{restId}").SendAsync("StopListUpdated", stopList);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[FoodStock] Ошибка уведомления стоп-листа: {ex.Message}");
+        }
     }
+
     private async Task NotifyRecommendationsAsync(Guid restId)
     {
-        var recs = await GetRecommendationsAsync(restId);
-        await _hub.Clients.Group($"restaurant_{restId}").SendAsync("RecommendationsUpdated", recs);
+        try
+        {
+            if (_hub == null) return;
+            var recs = await GetRecommendationsAsync(restId);
+            await _hub.Clients.Group($"restaurant_{restId}").SendAsync("RecommendationsUpdated", recs);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[FoodStock] Ошибка уведомления рекомендаций: {ex.Message}");
+        }
     }
     #endregion
 }

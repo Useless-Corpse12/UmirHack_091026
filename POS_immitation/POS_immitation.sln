@@ -1,0 +1,16 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "POS_immitation", "POS_immitation\POS_immitation.csproj", "{57BE6F5A-BDD8-487A-89D0-B2DC57B0230C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{57BE6F5A-BDD8-487A-89D0-B2DC57B0230C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{57BE6F5A-BDD8-487A-89D0-B2DC57B0230C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{57BE6F5A-BDD8-487A-89D0-B2DC57B0230C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{57BE6F5A-BDD8-487A-89D0-B2DC57B0230C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
