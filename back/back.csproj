@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="MediatR" Version="14.2.0" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
+        <PackageReference Include="Microsoft.AspNetCore.SignalR.Common" Version="10.0.13" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.0" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.23.0" />
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.Design" Version="1.1.0" />
+        <PackageReference Include="Quartz" Version="4.5.0" />
+        <PackageReference Include="Quartz.Extensions.DependencyInjection" Version="4.5.0" />
+        <PackageReference Include="Quartz.Extensions.Hosting" Version="4.5.0" />
+        <PackageReference Include="StackExchange.Redis" Version="3.4.0" />
+        <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.23.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Application\Authority\POS\" />
+      <Folder Include="Application\Authority\User\" />
+      <Folder Include="Application\RestaurantArea\Suppliers\" />
+      <Folder Include="Application\RestaurantArea\ManagerSupplies\" />
+    </ItemGroup>
+
+</Project>
