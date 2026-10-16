@@ -1,4 +1,6 @@
 using System.Text.Json;
+using back.Presentation.Hubs;
+using Microsoft.AspNetCore.SignalR;
 using StackExchange.Redis;
 
 namespace back.Infrastructure.Services.DaikonBaseContext;
@@ -13,6 +15,7 @@ public record CartReservation(Guid DishId, string DishName, List<DishItem> Recip
 public class FoodStock : IFoodStock
 {
     private readonly IDatabase _db;
+    private readonly IHubContext<NotificationHub> _hub;
 
     public FoodStock(IConnectionMultiplexer redis)
     {
@@ -44,6 +47,10 @@ public class FoodStock : IFoodStock
             
             await _db.SortedSetAddAsync(key, json, score);
         }
+
+        await NotifyRecommendationsAsync(restId);
+        await NotifyProductsAsync(restId);
+        await NotifyStopListAsync(restId);
     }
 
     public async Task<string> CreateCartAsync(Guid restId)
@@ -100,6 +107,9 @@ public class FoodStock : IFoodStock
 
         var reservation = new CartReservation(dishId, dishInfo.Name, dishInfo.Recipe, reservedProducts);
         await _db.HashSetAsync(CartKey(restId, cartId), dishId.ToString(), JsonSerializer.Serialize(reservation));
+        await NotifyRecommendationsAsync(restId);
+        await NotifyProductsAsync(restId);
+        await NotifyStopListAsync(restId);
     }
 
     public async Task RemoveDishFromCartAsync(Guid restId, string cartId, Guid dishId)
@@ -121,6 +131,9 @@ public class FoodStock : IFoodStock
         }
 
         await _db.HashDeleteAsync(cartKey, dishId.ToString());
+        await NotifyRecommendationsAsync(restId);
+        await NotifyProductsAsync(restId);
+        await NotifyStopListAsync(restId);
     }
 
     public async Task<List<CartReservation>> CompleteCartAsync(Guid restId, string cartId)
@@ -164,6 +177,10 @@ public class FoodStock : IFoodStock
         }
 
         await _db.KeyDeleteAsync(cartKey);
+        
+        await NotifyRecommendationsAsync(restId);
+        await NotifyProductsAsync(restId);
+        await NotifyStopListAsync(restId);
     }
 
     public async Task<List<ProductItem>> GetProductsAsync(Guid restId)
@@ -178,9 +195,9 @@ public class FoodStock : IFoodStock
             .ToList();
     }
 
-    public async Task DestroyRottingProductAsync(Guid resId, List<(Guid ProductId, Guid SupplyId, int Quantity)> products)
+    public async Task DestroyRottingProductAsync(Guid restId, List<(Guid ProductId, Guid SupplyId, int Quantity)> products)
     {
-        var key = StockKey(resId);
+        var key = StockKey(restId);
         var stock = (await _db.SortedSetRangeByScoreAsync(key))
             .Select(j => JsonSerializer.Deserialize<ProductItem>(j.ToString())!)
             .ToList();
@@ -204,6 +221,10 @@ public class FoodStock : IFoodStock
                 left -= take;
             }
         }
+        
+        await NotifyRecommendationsAsync(restId);
+        await NotifyProductsAsync(restId);
+        await NotifyStopListAsync(restId);
     }
     
     public async Task RemoveProductsByOrderItemsAsync(Guid restId, List<OrderItemDto> orderItems)
@@ -232,6 +253,10 @@ public class FoodStock : IFoodStock
                 left -= take;
             }
         }
+        
+        await NotifyRecommendationsAsync(restId);
+        await NotifyProductsAsync(restId);
+        await NotifyStopListAsync(restId);
     }
     
     #endregion
@@ -249,6 +274,9 @@ public class FoodStock : IFoodStock
             var json = JsonSerializer.Serialize(info);
             await _db.HashSetAsync(key, dish.DishId.ToString(), json);
         }
+        
+        await NotifyRecommendationsAsync(restId);
+        await NotifyStopListAsync(restId);
     }
 
     public async Task<Dictionary<Guid, DishInfo>> GetDishesAsync(Guid restId)
@@ -343,5 +371,23 @@ public class FoodStock : IFoodStock
         return results.OrderByDescending(r => r.Score).ToList();
     }
     
+    #endregion
+    
+    #region Notifications
+    private async Task NotifyProductsAsync(Guid restId)
+    {
+        var products = await GetProductsAsync(restId);
+        await _hub.Clients.Group($"restaurant_{restId}").SendAsync("ProductsUpdated", products);
+    }
+    private async Task NotifyStopListAsync(Guid restId)
+    {
+        var stopList = await GetStopListAsync(restId);
+        await _hub.Clients.Group($"restaurant_{restId}").SendAsync("StopListUpdated", stopList);
+    }
+    private async Task NotifyRecommendationsAsync(Guid restId)
+    {
+        var recs = await GetRecommendationsAsync(restId);
+        await _hub.Clients.Group($"restaurant_{restId}").SendAsync("RecommendationsUpdated", recs);
+    }
     #endregion
 }

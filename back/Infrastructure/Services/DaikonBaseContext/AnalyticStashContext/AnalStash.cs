@@ -1,5 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using back.Presentation.Hubs;
+using Microsoft.AspNetCore.SignalR;
 using StackExchange.Redis;
 
 namespace back.Infrastructure.Services.DaikonBaseContext;
@@ -7,6 +9,7 @@ namespace back.Infrastructure.Services.DaikonBaseContext;
 public class AnalStash : IAnalStash
 {
     private readonly IDatabase _db;
+    private readonly IHubContext<NotificationHub> _hub;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -14,9 +17,10 @@ public class AnalStash : IAnalStash
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    public AnalStash(IConnectionMultiplexer redis)
+    public AnalStash(IConnectionMultiplexer redis, IHubContext<NotificationHub> hub)
     {
         _db = redis.GetDatabase();
+        
     }
 
     #region Keys
@@ -33,18 +37,21 @@ public class AnalStash : IAnalStash
     {
         var json = JsonSerializer.Serialize(order, JsonOptions);
         await _db.SortedSetAddAsync(OrdersKey(restId), json, createdAt.Ticks);
+        await NotifyAnalyticsAsync(restId);
     }
 
     public async Task AddSupplyAsync(Guid restId, object supply, DateTime createdAt)
     {
         var json = JsonSerializer.Serialize(supply, JsonOptions);
         await _db.SortedSetAddAsync(SuppliesKey(restId), json, createdAt.Ticks);
+        await NotifyAnalyticsAsync(restId);
     }
 
     public async Task AddRotAsync(Guid restId, object rot, DateTime createdAt)
     {
         var json = JsonSerializer.Serialize(rot, JsonOptions);
         await _db.SortedSetAddAsync(RotKey(restId), json, createdAt.Ticks);
+        await NotifyAnalyticsAsync(restId);
     }
 
     #endregion
@@ -89,4 +96,12 @@ public class AnalStash : IAnalStash
     }
 
     #endregion
+    
+    private async Task NotifyAnalyticsAsync(Guid restId)
+    {
+        var orders = await GetOrdersAsync<object>(restId);
+        var supplies = await GetSuppliesAsync<object>(restId);
+        var rot = await GetRotAsync<object>(restId);
+        await _hub.Clients.Group($"restaurant_{restId}").SendAsync("AnalyticsUpdated", new { Orders = orders, Supplies = supplies, Rot = rot });
+    }
 }
