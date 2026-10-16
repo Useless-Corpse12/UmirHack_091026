@@ -27,6 +27,7 @@ export default defineConfig(({ mode }) => {
           ? {
               "/api": { target: backendTarget, changeOrigin: true },
               "/ws": { target: backendTarget, changeOrigin: true, ws: true },
+              "/hubs": { target: backendTarget, changeOrigin: true, ws: true },
             }
           : {}),
       },

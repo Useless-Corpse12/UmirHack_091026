@@ -36,7 +36,10 @@ export const restaurantsApi = {
   },
   async acceptInvite(code: string) {
     if (apiConfig.mode === "live") {
-      throw new Error("Бэкенд Useless-Corpse не предоставляет API принятия приглашений");
+      const existing = await nativeBackendApi.memberships();
+      await nativeBackendApi.acceptInvite(code);
+      const latest = await nativeBackendApi.memberships();
+      return latest.find((m) => !existing.some((x) => x.restaurantId === m.restaurantId)) || null;
     }
     return decodeMembership(
       (await axiosInstance.post(endpoints.acceptInvite, { code })).data,

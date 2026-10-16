@@ -16,9 +16,11 @@ import { SettingsPage } from "../../pages/SettingsPage";
 import { ProtectedRoute, RestaurantRoleGuard } from "./ProtectedRoute";
 import { RestaurantBoundary } from "../../features/restaurant-runtime/RestaurantBoundary";
 import { apiConfig } from "../../shared/api/config";
+import { NativeCatalogPage } from "../../pages/native/NativeCatalogPage";
+import { NativeTerminalsPage } from "../../pages/native/NativeTerminalsPage";
 import {
-  NativeRestaurantLayout, NativeDashboardPage, NativeMenuPage,
-  NativeProductsPage, NativeEmployeesPage, NativeDeliveriesPage,
+  NativeRestaurantLayout, NativeDashboardPage,
+  NativeEmployeesPage, NativeDeliveriesPage,
   NativeWarehousePage, NativeAnalyticsPage,
 } from "../../pages/native/NativePages";
 
@@ -33,6 +35,7 @@ export const AppRouter = () => (
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/invite/:code" element={<InvitePage />} />
+      <Route path="/invite" element={<InvitePage />} />
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={<RestaurantsPage />} />
         <Route path="/restaurant/:id" element={
@@ -43,8 +46,9 @@ export const AppRouter = () => (
           <Route path="analytics" element={live ? <NativeAnalyticsPage /> : <AnalyticsPage />} />
           <Route path="warehouse" element={live ? <NativeWarehousePage /> : <WarehousePage />} />
           <Route path="deliveries" element={live ? <NativeDeliveriesPage /> : <DeliveriesPage />} />
-          <Route path="menu" element={live ? <NativeMenuPage /> : guard(<MenuPage />)} />
-          <Route path="products" element={live ? guard(<NativeProductsPage />) : guard(<ProductsPage />)} />
+          <Route path="menu" element={live ? <NativeCatalogPage /> : guard(<MenuPage />)} />
+          <Route path="products" element={live ? <Navigate to="../menu" replace /> : guard(<ProductsPage />)} />
+          {live && <Route path="terminals" element={guard(<NativeTerminalsPage />)} />}
           <Route path="employees" element={live ? guard(<NativeEmployeesPage />) : guard(<EmployeesPage />)} />
           <Route path="settings" element={guard(<SettingsPage />, ["owner"])} />
         </Route>

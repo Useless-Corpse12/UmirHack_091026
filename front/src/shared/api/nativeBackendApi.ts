@@ -66,6 +66,12 @@ export const nativeBackendApi = {
     );
     return data;
   },
+  async acceptInvite(token: string) {
+    await axiosInstance.post("/api/Authority/AcceptInvite", { token, userId: currentUserId() });
+  },
+  async createPOS(restaurantId: string, pincode: string) {
+    await axiosInstance.post("/api/Restaurant/CreatePOS", { restaurantId, pincode });
+  },
   async deleteRestaurant(restaurantId: string) {
     await axiosInstance.delete("/api/Restaurant/" + encodeURIComponent(restaurantId), {
       params: { userId: currentUserId() },
@@ -77,8 +83,7 @@ export const nativeBackendApi = {
     });
   },
   async invite(restaurantId: string, email: string, role: "manager" | "admin") {
-    // Note: the backend email contains a localhost:5067/invite link and the backend
-    // does NOT implement a claim/accept invitation controller. Do not promise redemption.
+    // Existing server sends a link on port 5067; recipient can paste its token into frontend invitation form.
     await axiosInstance.post("/api/Restaurant/DirectInvite", {
       restaurantId, email, isAdmin: role === "admin",
     });

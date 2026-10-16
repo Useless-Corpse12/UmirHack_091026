@@ -7,6 +7,8 @@ import { nativeBackendApi as api, isGuid } from "../../shared/api/nativeBackendA
 import type { NativeDish, NativeProductTemplate } from "../../shared/api/nativeBackendApi";
 import type { Employee } from "../../shared/types/models";
 import { toApiError } from "../../shared/api/errors";
+import { NativeSignalR } from "../../shared/realtime/nativeSignalR";
+import { useNativeLiveStore } from "../../shared/realtime/nativeLiveStore";
 
 const inputClass = "w-full border border-gray-300 rounded-lg px-3 py-2 bg-white";
 const primaryClass = "px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50";
@@ -49,14 +51,24 @@ function useRemote<T>(reader: (id: string, signal: AbortSignal) => Promise<T>) {
 export function NativeRestaurantLayout() {
   const { restaurantId, name, role } = useRestaurantContext();
   const navigate = useNavigate();
+  const selectRestaurant = useNativeLiveStore((s) => s.selectRestaurant);
+  const updateStatus = useNativeLiveStore((s) => s.updateStatus);
+  const receive = useNativeLiveStore((s) => s.receive);
+  const realtimeStatus = useNativeLiveStore((s) => s.status);
+  const realtimeError = useNativeLiveStore((s) => s.error);
+  useEffect(() => {
+    selectRestaurant(restaurantId);
+    const conn = new NativeSignalR(restaurantId, receive, updateStatus);
+    void conn.start();
+    return () => conn.stop();
+  }, [restaurantId, selectRestaurant, receive, updateStatus]);
   const tabs = [
     { label: "Обзор", to: "dashboard" },
-    { label: "Меню", to: "menu" },
-    { label: "Продукты", to: "products" },
+    { label: "Меню и продукты", to: "menu" },
     { label: "Склад", to: "warehouse" },
     { label: "Поставки", to: "deliveries" },
     { label: "Аналитика", to: "analytics" },
-    ...(["owner", "admin"].includes(role) ? [{ label: "Сотрудники", to: "employees" }] : []),
+    ...(["owner", "admin"].includes(role) ? [{ label: "Сотрудники", to: "employees" }, { label: "Кассовые аппараты", to: "terminals" }] : []),
     ...(role === "owner" ? [{ label: "Настройки", to: "settings" }] : []),
   ];
   return <div className="min-h-screen bg-gray-50">
@@ -66,6 +78,7 @@ export function NativeRestaurantLayout() {
           <Link to="/" className="text-sm text-blue-700">← Мои рестораны</Link>
           <h1 className="text-2xl font-bold mt-2">{name}</h1>
           <p className="text-xs text-gray-500 mt-1">ID: {restaurantId} · Роль: {role}</p>
+          <p role="status" className="text-xs mt-1 text-gray-600">SignalR: {realtimeStatus === "connected" ? "подключён (Long Polling)" : realtimeStatus === "connecting" ? "подключение…" : realtimeStatus === "reconnecting" ? "повторное подключение…" : "не подключён"}{realtimeError ? ` · ${realtimeError}` : ""}</p>
         </div>
         <button className="text-sm text-red-600" onClick={() => { void authApi.logout(); navigate("/login"); }}>Выйти</button>
       </div>
@@ -110,7 +123,7 @@ export function NativeEmployeesPage() {
     e.preventDefault(); setError(""); setResult(""); setBusy(true);
     try {
       await api.invite(restaurantId, email.trim().toLowerCase(), role === "owner" && asAdmin ? "admin" : "manager");
-      setResult("Бэкенд принял запрос на отправку письма. Принятие приглашения не реализовано в его HTTP API.");
+      setResult("Приглашение отправлено. Получатель может ввести код на странице «Мои рестораны» → «Присоединиться по коду».");
       setEmail("");
     } catch (e) { setError(messageOf(e)); }
     finally { setBusy(false); }
@@ -136,7 +149,7 @@ export function NativeEmployeesPage() {
     </div>
     <form className={cardClass} onSubmit={(e) => void submitInvite(e)}>
       <h3 className="font-semibold">Отправить приглашение</h3>
-      <Info>Метод <code>DirectInvite</code> отправляет письмо, но в этом исходном бэкенде отсутствует маршрут принятия приглашения. Получатель пока не сможет присоединиться по ссылке.</Info>
+      <Info>После получения письма сотрудник входит в свой аккаунт и вводит код приглашения. Он будет отправлен в <code>Authority/AcceptInvite</code>.</Info>
       <label className="block text-sm">Email<input type="email" required className={inputClass} value={email} onChange={(e) => setEmail(e.target.value)} /></label>
       {role === "owner" && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={asAdmin} onChange={(e) => setAsAdmin(e.target.checked)}/>Администратор (иначе менеджер)</label>}
       <button disabled={busy} className={primaryClass}>{busy ? "Отправка…" : "Отправить письмо"}</button>
@@ -275,18 +288,71 @@ export function NativeDeliveriesPage() {
 }
 
 export function NativeWarehousePage() {
-  return <div className="space-y-4"><h2 className="text-2xl font-semibold">Склад</h2>
-    <Info>Исходный бэкенд не публикует пользовательский GET-маршрут для остатков, партий, сроков годности или стоп-листа. Остатки находятся в Redis FoodStock, но без чтения через API этот экран не может их показать. В интерфейсе не отображаются фиктивные данные.</Info>
-    <p className="text-gray-600 text-sm">Потребуется безопасный GET-метод склада в самом бэкенде. В этом пакете сервер не менялся.</p></div>;
+  const rest = useRestaurantContext();
+  const live = useNativeLiveStore();
+  const active = live.restaurantId === rest.restaurantId;
+  const products = active ? live.products : null;
+  const stops = active ? live.stops : null;
+  const suggestions = active ? live.recommendations : null;
+  const total = products?.reduce((v, p) => v + p.quantity, 0);
+  return <div className="space-y-5"><h2 className="text-2xl font-semibold">Склад онлайн</h2>
+    <p className="text-sm text-gray-500">Получает данные от существующего SignalR-хаба <code>/hubs/notifications</code>. Снимок появляется после серверной рассылки события, а не при первом подключении.</p>
+    <div className="grid sm:grid-cols-3 gap-4">
+      <div className={cardClass}><h3>Остаток в партиях</h3><p className="text-3xl font-bold">{total ?? "—"}</p></div>
+      <div className={cardClass}><h3>Партий</h3><p className="text-3xl font-bold">{products?.length ?? "—"}</p></div>
+      <div className={cardClass}><h3>Блюд в стоп-листе</h3><p className="text-3xl font-bold">{stops?.length ?? "—"}</p></div>
+    </div>
+    <div className={cardClass}><h3 className="font-semibold">Партии продуктов (ProductsUpdated)</h3>
+      {products === null ? <Info>Ожидаем первое событие ProductsUpdated. Исходный API не предоставляет HTTP-метода чтения полного состояния.</Info> : products.length === 0 ? <p>В последней рассылке партии отсутствуют.</p> :
+        <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr><th className="p-2">Продукт</th><th className="p-2">Количество</th><th className="p-2">Годен до</th><th className="p-2">Поставка</th></tr></thead><tbody>{products.map((i, index) => <tr key={i.supplyId + i.productId + index} className="border-t"><td className="p-2">{i.productName}</td><td className="p-2">{i.quantity}</td><td className="p-2">{new Date(i.expiresAt).toLocaleString("ru-RU")}</td><td className="p-2 font-mono text-xs">{i.supplyId}</td></tr>)}</tbody></table></div>}
+    </div>
+    <div className="grid md:grid-cols-2 gap-4">
+      <div className={cardClass}><h3 className="font-semibold">Стоп-лист (StopListUpdated)</h3>
+        {stops === null ? <p className="text-sm text-gray-500">Нет рассылки</p> : stops.length ? stops.map((id) => <p key={id} className="border-t py-2 font-mono text-xs">Блюдо: {id}</p>) : <p className="text-sm">Стоп-лист пуст</p>}
+      </div>
+      <div className={cardClass}><h3 className="font-semibold">Рекомендации (RecommendationsUpdated)</h3>
+        {suggestions === null ? <p className="text-sm text-gray-500">Нет рассылки</p> : suggestions.length ? suggestions.map((item, idx) => <pre key={idx} className="text-xs whitespace-pre-wrap border-t pt-2">{JSON.stringify(item, null, 2)}</pre>) : <p className="text-sm">Рекомендаций нет</p>}
+      </div>
+    </div>
+  </div>;
 }
 
+function eventDate(item: unknown): string {
+  if (!item || typeof item !== "object") return "—";
+  const v = item as Record<string, unknown>;
+  const value = v.createdAt || v.date || v.approvedAt;
+  if (typeof value !== "string") return "—";
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString("ru-RU");
+}
+function eventDescription(item: unknown): string {
+  if (!item || typeof item !== "object") return String(item);
+  const v = item as Record<string, unknown>;
+  const id = v.id || v.supplyNumber || v.orderId || v.supplyId;
+  const count = v.itemsCount ?? v.acceptedBatches ?? v.quantity;
+  const status = v.status ?? "";
+  return [id ? `№ ${String(id)}` : "Событие", count !== undefined ? `кол-во: ${count}` : "", status ? `статус: ${String(status)}` : ""].filter(Boolean).join(" · ");
+}
 export function NativeAnalyticsPage() {
-  const dishes = useRemote(loadMenu); const members = useRemote(loadMembers);
-  return <div className="space-y-5"><h2 className="text-2xl font-semibold">Аналитика</h2>
-    <div className="grid sm:grid-cols-2 gap-4">
-      <div className={cardClass}><p className="text-gray-500 text-sm">Текущее число блюд</p><p className="text-3xl font-bold">{dishes.value?.length ?? "—"}</p><Err error={dishes.error}/></div>
-      <div className={cardClass}><p className="text-gray-500 text-sm">Текущее число сотрудников</p><p className="text-3xl font-bold">{members.value?.length ?? "—"}</p><Err error={members.error}/></div>
+  const { restaurantId } = useRestaurantContext();
+  const live = useNativeLiveStore((s) => s.restaurantId === restaurantId ? s.analytics : null);
+  const last = useNativeLiveStore((s) => s.restaurantId === restaurantId ? s.receivedAt : "");
+  const groups: { label: string; data: unknown[] | undefined }[] = [
+    { label: "Заказы", data: live?.orders },
+    { label: "Поставки", data: live?.supplies },
+    { label: "Порча / списания", data: live?.rot },
+  ];
+  return <div className="space-y-5"><h2 className="text-2xl font-semibold">Аналитика в реальном времени</h2>
+    <p className="text-sm text-gray-500">События <code>AnalyticsUpdated</code> из серверного <code>AnalStash</code>. Содержимое Redis используется без выдуманных денежных показателей.</p>
+    {live === null && <Info>Ожидаем первую рассылку AnalyticsUpdated. Сервер не отдаёт первичную историю аналитики по HTTP и не отправляет её автоматически при подключении.</Info>}
+    <div className="grid sm:grid-cols-3 gap-4">
+      {groups.map((g) => <section className={cardClass} key={g.label}><h3 className="text-gray-500 text-sm">{g.label}</h3><p className="text-3xl font-bold">{g.data?.length ?? "—"}</p></section>)}
     </div>
-    <Info>В бэкенде есть <code>AnalStash</code> (Redis Sorted Sets), но HTTP-метода получения аналитических событий нет. Поэтому история заказов, динамика поставок, просрочка, выручка и прибыль на этом экране <b>недоступны</b>, а не равны нулю. Выручку дополнительно невозможно рассчитать без цен.</Info>
+    {last && live && <p className="text-xs text-gray-500">Последняя рассылка: {new Date(last).toLocaleString("ru-RU")}</p>}
+    {groups.map((g) => <section key={g.label} className={cardClass}><h3 className="font-semibold">{g.label} — последние события</h3>
+      {g.data === undefined ? <p className="text-sm text-gray-500">Нет данных</p> : g.data.length === 0 ? <p className="text-sm">Событий нет</p> :
+        <div className="max-h-80 overflow-y-auto">{g.data.slice(-30).reverse().map((item, i) => <div key={i} className="border-t py-3 text-sm"><p>{eventDescription(item)}</p><p className="text-xs text-gray-500">{eventDate(item)}</p></div>)}</div>}
+    </section>)}
+    <p className="text-xs text-gray-500">Выручка и прибыль не вычисляются: бэкенд не предоставляет корректные цены продаж.</p>
   </div>;
 }

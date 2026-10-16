@@ -5,7 +5,6 @@ import { useAuthStore } from "../features/auth/store/authStore";
 import { authApi } from "../shared/api/authApi";
 import { ErrorNotice } from "../shared/ui/Feedback";
 import { FormDialog } from "../shared/ui/FormDialog";
-import { apiConfig } from "../shared/api/config";
 
 export const RestaurantsPage = () => {
   const navigate = useNavigate();
@@ -36,7 +35,7 @@ export const RestaurantsPage = () => {
       const member = await restaurants.join(code.trim());
       setCode("");
       setShowJoin(false);
-      navigate("/restaurant/" + member.restaurantId);
+      navigate(member ? "/restaurant/" + member.restaurantId : "/");
     } catch {
       /* The hook keeps the error and the form stays open. */
     }
@@ -69,7 +68,7 @@ export const RestaurantsPage = () => {
           >
             Создать ресторан
           </button>
-          {apiConfig.mode === "mock" && <button
+          <button
             onClick={() => {
               restaurants.clearJoinError();
               setShowJoin(true);
@@ -77,7 +76,7 @@ export const RestaurantsPage = () => {
             className="bg-white border border-gray-300 px-6 py-3 rounded hover:bg-gray-50"
           >
             Присоединиться по коду
-          </button>}
+          </button>
         </div>
         {created && (
           <section className="bg-green-50 border border-green-200 rounded p-5 mb-6 space-y-3">
@@ -170,6 +169,7 @@ export const RestaurantsPage = () => {
                   autoFocus
                 />
               </label>
+              <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded p-3">API-ключ для поставщика: текущий бэкенд Useless-Corpse генерирует его самостоятельно в <code>CreateRestaurantHandler</code> и не принимает ручной ключ в <code>CreateRestaurantCommand</code>. Поэтому ручной ввод здесь пока технически невозможен без правки бэкенда. Значение из поля на фронте сервер не сохранил бы.</p>
               <ErrorNotice error={restaurants.createError} />
               <div className="flex gap-3">
                 <button className="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50">
@@ -189,9 +189,9 @@ export const RestaurantsPage = () => {
           </form>
         </FormDialog>
       )}
-      {apiConfig.mode === "mock" && showJoin && (
+      {showJoin && (
         <FormDialog
-          title="Присоединиться"
+          title="Присоединиться по приглашению"
           onClose={() => setShowJoin(false)}
           busy={restaurants.isJoining}
         >

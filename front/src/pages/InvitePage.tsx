@@ -1,14 +1,15 @@
 import { useEffect } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useAcceptInvite } from "../features/management/useManagement";
 import { useAuthStore } from "../features/auth/store/authStore";
 import { storage } from "../shared/lib/storage";
 import { ErrorNotice } from "../shared/ui/Feedback";
-import { apiConfig } from "../shared/api/config";
 
 export const InvitePage = () => {
   const navigate = useNavigate();
-  const { code = "" } = useParams();
+  const { code: pathCode = "" } = useParams();
+  const [params] = useSearchParams();
+  const code = pathCode || params.get("code") || "";
   const { accept, isLoading, error } = useAcceptInvite();
   const { status, session } = useAuthStore();
   useEffect(() => {
@@ -18,7 +19,7 @@ export const InvitePage = () => {
     try {
       const member = await accept(code);
       storage.clearPendingInvite();
-      navigate("/restaurant/" + member.restaurantId);
+      navigate(member ? "/restaurant/" + member.restaurantId : "/");
     } catch {
       /* The hook keeps the server error. */
     }
@@ -41,14 +42,13 @@ export const InvitePage = () => {
               отправлено на этот email.
             </p>
             <ErrorNotice error={error} />
-            {apiConfig.mode === "live" && <p role="alert" className="bg-amber-50 p-3 rounded text-sm mb-3">В текущем бэкенде отсутствует endpoint принятия приглашения. Фронтенд не может выполнить эту операцию без изменения сервера.</p>}
-            {apiConfig.mode === "mock" && <button
+            <button
               onClick={() => void onAccept()}
               disabled={isLoading || !code}
               className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
             >
               {isLoading ? "Принятие..." : "Принять приглашение"}
-            </button>}
+            </button>
           </>
         ) : (
           <div className="space-y-4 text-center">
