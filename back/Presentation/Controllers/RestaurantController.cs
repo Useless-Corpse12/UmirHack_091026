@@ -2,6 +2,8 @@
 using back.Application.Authority.Restaurants.DirectInvite;
 using back.Application.Authority.Restaurants.GetRestaurantMembers;
 using back.Application.RestaurantArea.Menu;
+using back.Application.RestaurantArea.RotRescpect;
+using back.Application.RestaurantArea.SetProducts;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -152,6 +154,42 @@ public class RestaurantController(IMediator mediator) : ApiController
             var cmd = new RemoveRestaurantMemberCommand(userId, restaurantId, targetUserId);
             await mediator.Send(cmd);
             return Ok(new { Message = "Сотрудник удалён из ресторана" });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { Message = ex.Message });
+        }
+    }
+    
+    [HttpPost("[action]")]
+    [Authorize]
+    public async Task<IActionResult> SetProducts(SetProductsCommand cmd)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        try
+        {
+            await mediator.Send(cmd);
+            return Ok(new { Message = "Продукты успешно установлены/обновлены" });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { Message = ex.Message });
+        }
+    }
+
+    [HttpPost("[action]")]
+    [Authorize]
+    public async Task<IActionResult> RotRespect(RotRespectCommand cmd)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        try
+        {
+            await mediator.Send(cmd);
+            return Ok(new { Message = "Операция ротации успешно выполнена" });
         }
         catch (Exception ex)
         {
