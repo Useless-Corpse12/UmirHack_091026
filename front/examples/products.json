@@ -1,0 +1,5 @@
+[
+  { "name": "Молоко", "shelfLifeSeconds": 604800, "unit": "л" },
+  { "name": "Томаты", "shelfLifeSeconds": 435600, "unit": "шт." },
+  { "name": "Мука", "shelfLifeSeconds": 7776000, "unit": "г" }
+]
