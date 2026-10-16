@@ -28,8 +28,8 @@
     <ItemGroup>
       <Folder Include="Application\Authority\POS\" />
       <Folder Include="Application\Authority\User\" />
-      <Folder Include="Application\RestaurantArea\POS\CancelOrder\" />
-      <Folder Include="Application\RestaurantArea\Supplies\" />
+      <Folder Include="Application\RestaurantArea\Suppliers\" />
+      <Folder Include="Application\RestaurantArea\ManagerSupplies\" />
     </ItemGroup>
 
 </Project>

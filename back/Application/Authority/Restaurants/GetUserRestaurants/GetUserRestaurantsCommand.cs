@@ -8,5 +8,6 @@ public record GetUserRestaurantsCommand(Guid UserId) : IRequest<List<UserRestaur
 public record UserRestaurantDto(
     Guid RestaurantId,
     string RestaurantName,
-    UserRole Role
+    UserRole Role,
+    string ApiKey
 );

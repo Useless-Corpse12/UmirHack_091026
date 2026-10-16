@@ -54,9 +54,17 @@ public class RemoveRestaurantMemberHandler(AppDbContext dbContext) : IRequestHan
 
         var userRestaurant = await dbContext.UserRestaurants
             .FirstOrDefaultAsync(ur => ur.UserId == cmd.TargetUserId && ur.RestaurantId == cmd.RestaurantId, cnt);
-
+        
+            
+            
         if (userRestaurant != null)
         {
+            if (userRestaurant.Role == UserRole.Cashier)
+            {
+                var userToDestroy = await  dbContext.Users.FindAsync(userRestaurant.UserId);
+                dbContext.Users.Remove(userToDestroy);
+            }
+                
             dbContext.UserRestaurants.Remove(userRestaurant);
             await dbContext.SaveChangesAsync(cnt);
         }

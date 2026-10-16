@@ -26,7 +26,7 @@ public class SupplierGetProductsHandler(AppDbContext dbContext, IPasswordHasher 
             .Select(p => new ProductItemDto(
                 p.Id,
                 p.Name,
-                p.ShelfLifeDays,
+                p.ShelfLifeSeconds,
                 p.Units
             ))
             .ToListAsync(cnt);

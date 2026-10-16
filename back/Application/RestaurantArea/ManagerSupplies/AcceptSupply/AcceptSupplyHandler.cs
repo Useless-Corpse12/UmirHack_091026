@@ -1,17 +1,23 @@
 ﻿using back.Data;
 using back.Domain.Entities;
 using back.Infrastructure.Services.DaikonBaseContext;
+using back.Infrastructure.Services.Workers;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace back.Application.RestaurantArea.Supplies.AcceptSupply;
 
-public class AcceptSupplyHandler(AppDbContext dbContext, IFoodStock foodStock) : IRequestHandler<AcceptSupplyCommand, Unit>
+public class AcceptSupplyHandler(
+    AppDbContext dbContext, 
+    IFoodStock foodStock,
+    IRotScheduler rotScheduler
+) : IRequestHandler<AcceptSupplyCommand, Unit>
 {
     public async Task<Unit> Handle(AcceptSupplyCommand cmd, CancellationToken cnt)
     {
         var supply = await dbContext.Supplies
             .Include(s => s.Batches)
+            .ThenInclude(b => b.Product)
             .FirstOrDefaultAsync(s => s.Id == cmd.SupplyId, cnt);
 
         if (supply == null)
@@ -29,6 +35,8 @@ public class AcceptSupplyHandler(AppDbContext dbContext, IFoodStock foodStock) :
             throw new Exception("Недостаточно прав для принятия поставки");
 
         bool allMatch = true;
+        bool hasAnyAccepted = false;
+
         foreach (var item in cmd.Items)
         {
             var batch = supply.Batches.FirstOrDefault(b => b.ProductId == item.ProductId);
@@ -37,18 +45,29 @@ public class AcceptSupplyHandler(AppDbContext dbContext, IFoodStock foodStock) :
 
             batch.FactQuantity = item.FactQuantity;
 
+            if (item.FactQuantity > 0)
+                hasAnyAccepted = true;
+
             if (item.FactQuantity != batch.Quantity)
                 allMatch = false;
         }
 
-        supply.SupplyStatus = allMatch
-            ? (int)SupplyStatus.GotIt
-            : (int)SupplyStatus.Partial;
+        if (!hasAnyAccepted)
+        {
+            supply.SupplyStatus = (int)SupplyStatus.Denial;
+        }
+        else if (allMatch)
+        {
+            supply.SupplyStatus = (int)SupplyStatus.GotIt; 
+        }
+        else
+        {
+            supply.SupplyStatus = (int)SupplyStatus.Partial; 
+        }
 
         await dbContext.SaveChangesAsync(cnt);
 
-        if (supply.SupplyStatus == (int)SupplyStatus.GotIt ||
-            supply.SupplyStatus == (int)SupplyStatus.Partial)
+        if (hasAnyAccepted)
         {
             var productsForRedis = supply.Batches
                 .Where(b => b.FactQuantity > 0)
@@ -67,6 +86,13 @@ public class AcceptSupplyHandler(AppDbContext dbContext, IFoodStock foodStock) :
                     supply.Id,
                     productsForRedis
                 );
+
+                var itemsForScheduler = supply.Batches
+                    .Where(b => b.FactQuantity > 0)
+                    .Select(b => (b.ProductId, supply.Id, b.Id, b.ExpiresAt))
+                    .ToList();
+
+                await rotScheduler.ScheduleAsync(supply.RestaurantId, itemsForScheduler);
             }
         }
 

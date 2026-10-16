@@ -10,8 +10,7 @@ public class RejectSupplyHandler(AppDbContext dbContext) : IRequestHandler<Rejec
     public async Task<Unit> Handle(RejectSupplyCommand cmd, CancellationToken cnt)
     {
         var supply = await dbContext.Supplies
-            .Include(s => s.Batches)
-            .FirstOrDefaultAsync(s => s.Id == cmd.SupplyId, cnt);
+            .FirstOrDefaultAsync(s => s.Id == cmd.SupplyId && s.RestaurantId == cmd.RestaurantId, cnt);
 
         if (supply == null)
             throw new Exception("Поставка не найдена");
@@ -28,6 +27,7 @@ public class RejectSupplyHandler(AppDbContext dbContext) : IRequestHandler<Rejec
             throw new Exception("Недостаточно прав для отклонения поставки");
 
         supply.SupplyStatus = (int)SupplyStatus.Denial;
+        
         await dbContext.SaveChangesAsync(cnt);
 
         return Unit.Value;

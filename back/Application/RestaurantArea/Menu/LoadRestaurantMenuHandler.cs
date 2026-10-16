@@ -18,23 +18,9 @@ public class LoadRestaurantMenuHandler(AppDbContext dbContext, IFoodStock foodSt
             .GroupBy(p => p.Name)
             .ToDictionary(g => g.Key, g => g.First());
 
-        var oldDishIds = await dbContext.Dishes
+        await dbContext.Dishes
             .Where(d => d.RestaurantId == cmd.RestaurantId)
-            .Select(d => d.Id)
-            .ToListAsync(cnt);
-
-        if (oldDishIds.Any())
-        {
-            var oldLinks = dbContext.DishIngredientLinks
-                .Where(l => oldDishIds.Contains(l.DishId));
-            dbContext.DishIngredientLinks.RemoveRange(oldLinks);
-
-            var oldDishes = dbContext.Dishes
-                .Where(d => d.RestaurantId == cmd.RestaurantId);
-            dbContext.Dishes.RemoveRange(oldDishes);
-
-            await dbContext.SaveChangesAsync(cnt);
-        }
+            .ExecuteDeleteAsync(cnt); 
 
         var dishesForRedis = new List<(Guid DishId, string DishName, List<DishItem> Recipe)>();
 

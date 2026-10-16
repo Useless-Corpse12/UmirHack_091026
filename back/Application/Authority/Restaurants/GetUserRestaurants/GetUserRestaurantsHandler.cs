@@ -13,7 +13,7 @@ public class GetUserRestaurantsHandler(AppDbContext dbContext) : IRequestHandler
             .Join(dbContext.Restaurants,
                   ur => ur.RestaurantId,
                   r => r.Id,
-                  (ur, r) => new UserRestaurantDto(r.Id, r.Name, ur.Role))
+                  (ur, r) => new UserRestaurantDto(r.Id, r.Name, ur.Role,r.ApiSecret))
             .ToListAsync(cnt);
 
         return restaurants;

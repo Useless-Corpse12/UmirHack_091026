@@ -7,8 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace back.Application.RestaurantArea.Supplies;
 
 public class SupplyIncomingHandler(
-    AppDbContext dbContext,
-    IPasswordHasher passHasher
+    AppDbContext dbContext
 ) : IRequestHandler<SupplyIncomingCommand, Guid>
 {
     public async Task<Guid> Handle(SupplyIncomingCommand cmd, CancellationToken cancellationToken)
@@ -16,7 +15,7 @@ public class SupplyIncomingHandler(
         var restaurant = await dbContext.Restaurants
             .FirstOrDefaultAsync(r => r.Id == cmd.RestaurantId, cancellationToken);
         
-        if (restaurant == null || !passHasher.Validate(cmd.ApiKey, restaurant.ApiSecret))
+        if (restaurant == null || cmd.ApiKey!=restaurant.ApiSecret)
         {
             throw new UnauthorizedAccessException("Неверный Id ресторана или API ключ");
         }
@@ -48,7 +47,7 @@ public class SupplyIncomingHandler(
                 ProductId = item.ProductId,
                 Quantity = item.Quantity,
                 FactQuantity = 0,
-                ExpiresAt = DateTime.UtcNow.AddDays(product.ShelfLifeDays) 
+                ExpiresAt = DateTime.UtcNow.AddSeconds(product.ShelfLifeSeconds) 
             };
 
             supply.Batches.Add(supplyItem);

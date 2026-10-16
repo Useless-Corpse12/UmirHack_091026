@@ -155,7 +155,7 @@ namespace back.Migrations
                     b.Property<Guid>("RestaurantId")
                         .HasColumnType("uuid");
 
-                    b.Property<int>("ShelfLifeDays")
+                    b.Property<int>("ShelfLifeSeconds")
                         .HasColumnType("integer");
 
                     b.Property<string>("Units")
