@@ -1,11 +1,16 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { Eye, EyeOff, KeyRound, Monitor, PlusCircle } from "lucide-react";
 import { useRestaurantContext } from "../../features/restaurant-runtime/context";
 import { nativeBackendApi } from "../../shared/api/nativeBackendApi";
 import { toApiError } from "../../shared/api/errors";
-export function NativeTerminalsPage() {
+import { Notice, ErrorMessage, surface, primary, field } from "./NativeUI";
+
+/** POS registration lives on the Employees page; no separate POS sales UI. */
+export function CreateTerminalForm() {
   const { restaurantId } = useRestaurantContext();
   const [pin, setPin] = useState("");
+  const [showPin, setShowPin] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -15,22 +20,19 @@ export function NativeTerminalsPage() {
     setBusy(true);
     try {
       await nativeBackendApi.createPOS(restaurantId, pin);
-      setPin(""); setMessage("Метод CreatePOS успешно выполнен. Новый кассовый аппарат создан сервером.");
+      setPin(""); setMessage("Кассовый аппарат создан.");
     } catch (e) { setError(toApiError(e).message); }
     finally { setBusy(false); }
   };
-  return <div className="space-y-5"><h2 className="text-2xl font-bold">Кассовые аппараты</h2>
-    <p className="text-gray-600 text-sm">Здесь только создание учётной записи кассового аппарата. Самого интерфейса продажи/корзины нет.</p>
-    <form onSubmit={(e) => void create(e)} className="max-w-xl bg-white border border-gray-200 rounded-xl p-5 space-y-4">
-      <h3 className="font-semibold">Создать кассу</h3>
-      <p className="text-gray-500 text-xs break-all">Ресторан: {restaurantId}</p>
-      <label className="block text-sm space-y-2">PIN для кассы
-        <input type="password" inputMode="numeric" autoComplete="new-password" maxLength={8} className="w-full border rounded-lg px-3 py-2" placeholder="4–8 цифр" value={pin} onChange={(e) => setPin(e.target.value)} required/>
-      </label>
-      <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded p-3">Текущий CreatePOS создаёт технического пользователя с одинаковым email для всех касс одного ресторана. Повторное создание может быть отклонено уникальным индексом Users.Email. Кроме того, в API нет метода списка касс — существующие здесь не отображаются.</p>
-      {error && <p role="alert" className="text-red-700 text-sm">{error}</p>}
-      {message && <p role="status" className="text-green-700 text-sm">{message}</p>}
-      <button className="px-4 py-2 rounded bg-blue-700 text-white disabled:opacity-50" disabled={busy}>{busy ? "Создание…" : "Создать кассу"}</button>
+  return <section className={`${surface} overflow-hidden`}>
+    <div className="flex items-center gap-4 border-b border-slate-100 bg-gradient-to-r from-indigo-50 via-white to-white p-6"><div className="rounded-2xl bg-white p-3 text-indigo-600 shadow-sm"><Monitor size={27}/></div><div><h3 className="text-lg font-extrabold">Кассовые аппараты</h3><p className="text-sm text-slate-500">Регистрация нового терминала</p></div></div>
+    <form onSubmit={(e) => void create(e)} className="space-y-5 p-6">
+      <label className="block max-w-md text-sm font-bold text-slate-800">PIN для устройства<div className="relative mt-2"><KeyRound className="absolute left-3.5 top-3.5 text-slate-400" size={18}/>
+        <input type={showPin ? "text" : "password"} inputMode="numeric" autoComplete="new-password" maxLength={8} className={`${field} pl-11 pr-12`} placeholder="От 4 до 8 цифр" value={pin} onChange={(e) => setPin(e.target.value)} required/>
+        <button type="button" aria-label={showPin ? "Скрыть PIN" : "Показать PIN"} className="absolute right-3 top-3 rounded-lg p-1 text-slate-400 hover:text-indigo-600" onClick={() => setShowPin((v) => !v)}>{showPin ? <EyeOff size={18}/> : <Eye size={18}/>}</button>
+      </div></label>
+      <ErrorMessage value={error}/>{message && <Notice tone="success">{message}</Notice>}
+      <button className={primary} disabled={busy}><PlusCircle size={18}/>{busy ? "Создание…" : "Создать аппарат"}</button>
     </form>
-  </div>;
+  </section>;
 }

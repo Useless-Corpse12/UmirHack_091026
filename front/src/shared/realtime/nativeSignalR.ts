@@ -5,9 +5,13 @@
  * For new projects prefer @microsoft/signalr; this version adds no dependency.
  */
 import { storage } from "../lib/storage";
+import { parseSupplySignal } from "./incomingSupplies";
+import type { IncomingSupply, SupplyMessageMode } from "./incomingSupplies";
 
 export interface StockBatch {
   supplyId: string;
+  foodStockId?: string;
+  id?: string;
   productId: string;
   productName: string;
   quantity: number;
@@ -16,6 +20,7 @@ export interface StockBatch {
 export interface LiveAnalytics { orders: unknown[]; supplies: unknown[]; rot: unknown[] }
 export type RealtimeEvent =
   | { kind: "products"; data: StockBatch[] }
+  | { kind: "supplies"; data: IncomingSupply[]; mode: SupplyMessageMode }
   | { kind: "stops"; data: string[] }
   | { kind: "recommendations"; data: unknown[] }
   | { kind: "analytics"; data: LiveAnalytics };
@@ -62,6 +67,10 @@ export class NativeSignalR {
       if (msg.type !== 1 || !msg.target) continue;
       const arg = msg.arguments?.[0];
       if (msg.target === "ProductsUpdated" && Array.isArray(arg)) this.event({ kind: "products", data: arg as StockBatch[] });
+      // SupplyIncomingHandler sends manager.supplies([newSupply]) to restaurant_<id>.
+      // This is incremental, so never overwrite other pending supply cards.
+      const supplyUpdate = parseSupplySignal(msg.target, arg);
+      if (supplyUpdate) this.event({ kind: "supplies", ...supplyUpdate });
       if (msg.target === "StopListUpdated" && Array.isArray(arg)) this.event({ kind: "stops", data: arg as string[] });
       if (msg.target === "RecommendationsUpdated" && Array.isArray(arg)) this.event({ kind: "recommendations", data: arg });
       if (msg.target === "AnalyticsUpdated" && arg && typeof arg === "object") {

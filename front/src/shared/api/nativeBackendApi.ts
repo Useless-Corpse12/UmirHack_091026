@@ -35,7 +35,7 @@ export const nativeBackendApi = {
   async memberships(signal?: AbortSignal): Promise<Membership[]> {
     const { data } = await axiosInstance.get<Array<{
       restaurantId: string; restaurantName: string; role: number | string;
-      apiKey?: string; // Backend currently returns an API secret/hash; NEVER display or persist it.
+      apiKey?: string; // Exposed by original UserRestaurantDto; do not cache it in Membership.
     }>>( "/api/Restaurant/GetUserRestaurants", {
       signal, params: { userId: currentUserId() },
     });
@@ -43,6 +43,18 @@ export const nativeBackendApi = {
     return data.map((r) => ({
       restaurantId: r.restaurantId, name: r.restaurantName, role: normalizeRole(r.role),
     }));
+  },
+  /** Owner-only display of supplier key. Retrieved on demand; never stored in localStorage or Membership. */
+  async supplierApiKey(restaurantId: string, signal?: AbortSignal): Promise<string | null> {
+    const { data } = await axiosInstance.get<Array<{
+      restaurantId: string; role: number | string; apiKey?: string | null;
+    }>>( "/api/Restaurant/GetUserRestaurants", {
+      signal, params: { userId: currentUserId() },
+    });
+    if (!Array.isArray(data)) throw new Error("Сервер не вернул список ресторанов");
+    const entry = data.find((r) => r.restaurantId?.toLowerCase() === restaurantId.toLowerCase());
+    if (!entry || normalizeRole(entry.role) !== "owner") throw new Error("Ключ поставщика доступен только владельцу ресторана");
+    return typeof entry.apiKey === "string" && entry.apiKey.trim() ? entry.apiKey : null;
   },
   async members(restaurantId: string, signal?: AbortSignal): Promise<Employee[]> {
     const { data } = await axiosInstance.get<Array<{

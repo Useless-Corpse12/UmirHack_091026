@@ -25,9 +25,9 @@ export function FormDialog({
         event.preventDefault();
         if (!busy) onClose();
       }}
-      className="m-auto w-[calc(100%_-_2rem)] max-w-lg max-h-[90vh] overflow-y-auto rounded-lg border border-gray-200 bg-white p-6 shadow-xl backdrop:bg-black/50"
+      className="m-auto w-[calc(100%_-_2rem)] max-w-lg max-h-[90vh] overflow-y-auto rounded-[24px] border border-slate-200 bg-white p-6 shadow-2xl shadow-indigo-950/20 backdrop:bg-slate-950/55 md:p-7"
     >
-      <h2 id={titleId} className="text-xl font-bold mb-4">
+      <h2 id={titleId} className="mb-5 text-2xl font-extrabold tracking-tight text-slate-900">
         {title}
       </h2>
       {children}

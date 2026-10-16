@@ -1,24 +1,22 @@
 import { useCallback, useEffect, useState } from "react";
-import type { FormEvent, ReactNode } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { AlertTriangle, ArrowLeft, LogOut, Radio, LayoutDashboard, Boxes, Truck, ChartNoAxesCombined, UsersRound, Settings2, BookOpen, ChefHat, ArrowUpRight, CircleHelp, PackageCheck, ClipboardList, Clock3 } from "lucide-react";
+import { Heading, Notice, Stat, Empty, surface, field, primary } from "./NativeUI";
 import { useRestaurantContext } from "../../features/restaurant-runtime/context";
 import { authApi } from "../../shared/api/authApi";
-import { nativeBackendApi as api, isGuid } from "../../shared/api/nativeBackendApi";
-import type { NativeDish, NativeProductTemplate } from "../../shared/api/nativeBackendApi";
+import { nativeBackendApi as api } from "../../shared/api/nativeBackendApi";
 import type { Employee } from "../../shared/types/models";
 import { toApiError } from "../../shared/api/errors";
 import { NativeSignalR } from "../../shared/realtime/nativeSignalR";
+import { CreateTerminalForm } from "./NativeTerminalsPage";
 import { useNativeLiveStore } from "../../shared/realtime/nativeLiveStore";
 
-const inputClass = "w-full border border-gray-300 rounded-lg px-3 py-2 bg-white";
-const primaryClass = "px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50";
-const cardClass = "bg-white border border-gray-200 rounded-xl p-5 space-y-3";
+const inputClass = field;
+const primaryClass = primary;
+const cardClass = `${surface} p-5 md:p-6 space-y-4`;
 
 function Err({ error }: { error: string }) {
   return error ? <p role="alert" className="text-red-700 text-sm p-3 rounded bg-red-50 border border-red-200">{error}</p> : null;
-}
-function Info({ children }: { children: ReactNode }) {
-  return <p className="text-sm bg-amber-50 border border-amber-200 rounded-lg p-4 text-amber-900">{children}</p>;
 }
 const messageOf = (reason: unknown) => toApiError(reason).message;
 
@@ -56,39 +54,42 @@ export function NativeRestaurantLayout() {
   const receive = useNativeLiveStore((s) => s.receive);
   const realtimeStatus = useNativeLiveStore((s) => s.status);
   const realtimeError = useNativeLiveStore((s) => s.error);
+  const pendingCount = useNativeLiveStore((s) => s.restaurantId === restaurantId ? s.supplies?.length || 0 : 0);
   useEffect(() => {
     selectRestaurant(restaurantId);
-    const conn = new NativeSignalR(restaurantId, receive, updateStatus);
+    const conn = new NativeSignalR(restaurantId, (event) => receive(restaurantId, event), (status, reason) => updateStatus(restaurantId, status, reason));
     void conn.start();
     return () => conn.stop();
   }, [restaurantId, selectRestaurant, receive, updateStatus]);
   const tabs = [
-    { label: "Обзор", to: "dashboard" },
-    { label: "Меню и продукты", to: "menu" },
-    { label: "Склад", to: "warehouse" },
-    { label: "Поставки", to: "deliveries" },
-    { label: "Аналитика", to: "analytics" },
-    ...(["owner", "admin"].includes(role) ? [{ label: "Сотрудники", to: "employees" }, { label: "Кассовые аппараты", to: "terminals" }] : []),
-    ...(role === "owner" ? [{ label: "Настройки", to: "settings" }] : []),
+    { label: "Обзор", to: "dashboard", icon: LayoutDashboard },
+    { label: "Аналитика", to: "analytics", icon: ChartNoAxesCombined },
+    { label: "Склад", to: "warehouse", icon: Boxes },
+    { label: "Приёмка", to: "deliveries", icon: Truck },
+    ...(["owner", "admin"].includes(role) ? [{ label: "Сотрудники", to: "employees", icon: UsersRound }] : []),
+    ...(["owner", "admin"].includes(role) ? [{ label: "Редактор меню", to: "menu", icon: BookOpen }] : []),
+    ...(role === "owner" ? [{ label: "Настройки", to: "settings", icon: Settings2 }] : []),
   ];
-  return <div className="min-h-screen bg-gray-50">
-    <header className="bg-white border-b px-4 md:px-8 py-5">
-      <div className="max-w-6xl mx-auto flex items-start justify-between gap-5">
-        <div>
-          <Link to="/" className="text-sm text-blue-700">← Мои рестораны</Link>
-          <h1 className="text-2xl font-bold mt-2">{name}</h1>
-          <p className="text-xs text-gray-500 mt-1">ID: {restaurantId} · Роль: {role}</p>
-          <p role="status" className="text-xs mt-1 text-gray-600">SignalR: {realtimeStatus === "connected" ? "подключён (Long Polling)" : realtimeStatus === "connecting" ? "подключение…" : realtimeStatus === "reconnecting" ? "повторное подключение…" : "не подключён"}{realtimeError ? ` · ${realtimeError}` : ""}</p>
+  return <div className="min-h-screen bg-[#f6f8fc] text-slate-900">
+    <header className="border-b border-slate-200 bg-white px-4 py-5 md:px-8">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-5">
+        <div className="flex items-center gap-4"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-100"><ChefHat size={25}/></div>
+          <div><Link to="/" className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-700"><ArrowLeft size={14}/> Все рестораны</Link>
+            <h1 className="mt-0.5 text-xl font-extrabold tracking-tight text-slate-900">{name}</h1><p className="mt-0.5 text-xs text-slate-500">Кабинет ресторана · {role}</p>
+          </div>
         </div>
-        <button className="text-sm text-red-600" onClick={() => { void authApi.logout(); navigate("/login"); }}>Выйти</button>
+        <div className="flex flex-wrap items-center gap-3"><span role="status" className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold ${realtimeStatus === "connected" ? "border-emerald-100 bg-emerald-50 text-emerald-700" : "border-amber-100 bg-amber-50 text-amber-700"}`}><Radio size={15}/> {realtimeStatus === "connected" ? "SignalR на связи" : realtimeStatus === "connecting" ? "Подключение…" : realtimeStatus === "reconnecting" ? "Переподключение…" : "Нет real-time"}</span>
+          <button type="button" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" onClick={() => { void authApi.logout(); navigate("/login"); }}><LogOut size={16}/> Выйти</button>
+        </div>
       </div>
     </header>
-    <nav className="bg-white border-b"><div className="max-w-6xl mx-auto px-4 md:px-8 flex gap-5 overflow-x-auto">
-      {tabs.map((tab) => <NavLink key={tab.to} to={tab.to} className={({ isActive }) =>
-        "text-sm py-4 whitespace-nowrap border-b-2 " + (isActive ? "border-blue-600 text-blue-700 font-semibold" : "border-transparent text-gray-600")}>{tab.label}</NavLink>)}
+    <nav className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/95 shadow-sm shadow-slate-200/30 backdrop-blur"><div className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-4 py-2 md:px-8">
+      {tabs.map(({to,label,icon:Icon}) => <NavLink key={to} to={to} className={({ isActive }) =>
+        "inline-flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm transition " + (isActive ? "bg-indigo-50 font-extrabold text-indigo-700" : "font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800")}><Icon size={16}/>{label}{label === "Приёмка" && pendingCount > 0 && <span aria-label={`${pendingCount} новых поставок`} className="rounded-full bg-indigo-600 px-2 py-0.5 text-[11px] font-extrabold text-white">{pendingCount}</span>}</NavLink>)}
     </div></nav>
-    <main className="max-w-6xl mx-auto p-4 md:p-8 space-y-5">
-      <Outlet key={restaurantId} />
+    <main className="mx-auto max-w-7xl space-y-5 px-4 py-7 md:px-8 md:py-9">
+      {realtimeError && <p role="status" className="text-xs text-rose-600">Соединение SignalR: {realtimeError}</p>}
+      <Outlet key={restaurantId}/>
     </main>
   </div>;
 }
@@ -97,17 +98,37 @@ const loadMenu = (id: string, signal: AbortSignal) => api.menu(id, signal);
 const loadMembers = (id: string, signal: AbortSignal) => api.members(id, signal);
 
 export function NativeDashboardPage() {
-  const { name, role } = useRestaurantContext();
+  const { name, role, restaurantId } = useRestaurantContext();
   const dishes = useRemote(loadMenu);
   const people = useRemote(loadMembers);
-  return <div className="space-y-5">
-    <div><h2 className="text-2xl font-semibold">Обзор: {name}</h2><p className="text-gray-500 text-sm">Данные только из существующих методов бэкенда.</p></div>
-    <div className="grid sm:grid-cols-2 gap-4">
-      <section className={cardClass}><h3 className="text-sm text-gray-500">Блюд в Redis-меню</h3><p className="text-3xl font-bold">{dishes.loading ? "…" : dishes.value?.length ?? "—"}</p><Err error={dishes.error}/></section>
-      <section className={cardClass}><h3 className="text-sm text-gray-500">Сотрудников в ресторане</h3><p className="text-3xl font-bold">{people.loading ? "…" : people.value?.length ?? "—"}</p><Err error={people.error}/></section>
+  const live = useNativeLiveStore((s) => s.restaurantId === restaurantId ? s : null);
+  const totalStock = live?.products?.reduce((sum, item) => sum + item.quantity, 0);
+  return <div className="space-y-6">
+    <section className="relative overflow-hidden rounded-[26px] bg-gradient-to-r from-[#1d2566] via-[#373c96] to-[#5c45bc] p-6 text-white shadow-xl shadow-indigo-100 md:p-9">
+      <div className="absolute -right-8 -top-10 h-56 w-56 rounded-full border-[45px] border-white/5" aria-hidden="true"/>
+      <div className="relative"><p className="mb-2 text-xs font-extrabold uppercase tracking-[.18em] text-indigo-200">Ваш ресторан · UMIR</p>
+        <h2 className="text-2xl font-extrabold tracking-tight md:text-4xl">Добро пожаловать в {name}</h2>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-indigo-100">Меню, команда, склад и поставки в одном кабинете. Здесь только подтверждённые данные из API и события SignalR.</p>
+        <div className="mt-6 flex flex-wrap gap-3"><Link to="../warehouse" className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-indigo-800 shadow-sm">Смотреть склад <ArrowUpRight size={16}/></Link>
+          {["owner", "admin"].includes(role) && <Link to="../menu" className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-4 py-2.5 text-sm font-bold text-white hover:bg-white/20">Редактор меню <BookOpen size={16}/></Link>}
+        </div>
+      </div>
+    </section>
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <Stat label="Блюда в меню" value={dishes.loading ? "…" : dishes.value?.length ?? "—"} icon={<ChefHat size={21}/>} description="Загружено из текущего POS/menu"/>
+      <Stat label="Сотрудники" value={people.loading ? "…" : people.value?.length ?? "—"} icon={<UsersRound size={21}/>} description="Участники ресторана"/>
+      <Stat label="Доступные партии" value={live?.products?.length ?? "—"} icon={<Boxes size={21}/>} description="Последнее событие ProductsUpdated"/>
+      <Stat label="Общий остаток" value={totalStock ?? "—"} icon={<PackageCheck size={21}/>} description="Сумма количеств, только если пришла рассылка"/>
     </div>
-    <Info>В исходном API нет методов получения сводки склада, количества заказов, выручки и просрочки. Здесь намеренно не показываются нули или придуманные значения.</Info>
-    <div className="flex gap-4 flex-wrap"><Link className="text-blue-700 underline" to="../menu">Открыть меню</Link>{["owner", "admin"].includes(role) && <Link className="text-blue-700 underline" to="../employees">Управление сотрудниками</Link>}</div>
+    <div className="grid gap-5">
+      <section className={`${surface} p-6`}><h3 className="mb-4 text-lg font-bold text-slate-900">Быстрые действия</h3>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {[{ to: "../warehouse", label: "Склад онлайн", sub: "Партии и стоп-лист", Icon: Boxes }, { to: "../analytics", label: "Аналитика", sub: "События AnalStash", Icon: ChartNoAxesCombined }, ...(["owner", "admin"].includes(role) ? [{ to: "../employees", label: "Команда", sub: "Сотрудники и инвайты", Icon: UsersRound }] : [])].map((a) =>
+            <Link key={a.to} to={a.to} className="group flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 transition hover:border-indigo-200 hover:bg-indigo-50"><div className="rounded-xl bg-white p-2.5 text-indigo-600 shadow-sm"><a.Icon size={20}/></div><div className="flex-1"><p className="text-sm font-bold text-slate-900">{a.label}</p><p className="text-xs text-slate-500">{a.sub}</p></div><ArrowUpRight size={16} className="text-slate-400 group-hover:text-indigo-600"/></Link>)}
+        </div>
+      </section>
+      <Err error={dishes.error || people.error}/>
+    </div>
   </div>;
 }
 
@@ -136,154 +157,24 @@ export function NativeEmployeesPage() {
     finally { setBusy(false); }
   };
   return <div className="space-y-5">
-    <h2 className="text-2xl font-semibold">Сотрудники</h2>
-    <Err error={error || data.error}/>{result && <p role="status" className="text-green-700">{result}</p>}
+    <Heading eyebrow="Команда" title="Сотрудники" description="Участники ресторана, роли и приглашения для новых сотрудников."/>
+    <Err error={error || data.error}/>{result && <Notice tone="success">{result}</Notice>}
     <div className={cardClass}>
       <div className="flex justify-between"><h3 className="font-semibold">Список сотрудников</h3><button className="text-blue-700 text-sm" onClick={() => void data.reload().catch(() => {})}>Обновить</button></div>
       {data.loading && <p>Загрузка…</p>}
       {data.value?.map((member) => <div key={member.userId} className="flex items-center gap-3 justify-between border-t py-3">
         <div><p className="break-all">{member.email}</p><p className="text-gray-500 text-sm">{member.role}</p></div>
         {member.role !== "owner" && (role === "owner" || (role === "admin" && ["manager", "cashier"].includes(member.role))) &&
-          <button type="button" disabled={busy} className="text-red-700 text-sm disabled:opacity-50" onClick={() => void remove(member)}>Удалить</button>}
+          <button type="button" disabled={busy} className="rounded-xl border border-rose-200 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50 disabled:opacity-50" onClick={() => void remove(member)}>Удалить</button>}
       </div>)}
     </div>
     <form className={cardClass} onSubmit={(e) => void submitInvite(e)}>
-      <h3 className="font-semibold">Отправить приглашение</h3>
-      <Info>После получения письма сотрудник входит в свой аккаунт и вводит код приглашения. Он будет отправлен в <code>Authority/AcceptInvite</code>.</Info>
-      <label className="block text-sm">Email<input type="email" required className={inputClass} value={email} onChange={(e) => setEmail(e.target.value)} /></label>
+      <h3 className="text-lg font-extrabold text-slate-900">Пригласить сотрудника</h3>
+      <label className="block text-sm font-semibold text-slate-700">Email сотрудника<input type="email" required className={`${inputClass} mt-2`} value={email} onChange={(e) => setEmail(e.target.value)} /></label>
       {role === "owner" && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={asAdmin} onChange={(e) => setAsAdmin(e.target.checked)}/>Администратор (иначе менеджер)</label>}
-      <button disabled={busy} className={primaryClass}>{busy ? "Отправка…" : "Отправить письмо"}</button>
+      <button disabled={busy} className={primaryClass}>{busy ? "Отправка…" : "Отправить приглашение"}</button>
     </form>
-  </div>;
-}
-
-export function NativeMenuPage() {
-  const { restaurantId, role } = useRestaurantContext();
-  const list = useRemote(loadMenu);
-  const [raw, setRaw] = useState('{\n  "Борщ": { "Картофель": 2, "Свёкла": 1 }\n}');
-  const [confirmation, setConfirmation] = useState("");
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [busy, setBusy] = useState(false);
-  const replace = async (e: FormEvent) => {
-    e.preventDefault(); setError(""); setSuccess("");
-    if (confirmation !== "ЗАМЕНИТЬ") { setError("Введите ЗАМЕНИТЬ для подтверждения"); return; }
-    try {
-      const parsed: unknown = JSON.parse(raw);
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw Error("Нужен JSON-объект блюд");
-      const menu = parsed as Record<string, unknown>;
-      if (!Object.keys(menu).length) throw Error("Меню не может быть пустым");
-      for (const [dish, recipe] of Object.entries(menu)) {
-        if (!dish.trim() || !recipe || typeof recipe !== "object" || Array.isArray(recipe)) throw Error("Неверный рецепт блюда " + dish);
-        const ingredients = Object.entries(recipe);
-        if (!ingredients.length || ingredients.some(([name, qty]) => !name.trim() || !Number.isInteger(qty) || (qty as number) <= 0))
-          throw Error("Укажите положительные целые количества ингредиентов для " + dish);
-      }
-      setBusy(true);
-      await api.replaceMenu(restaurantId, menu as Record<string, Record<string, number>>);
-      setSuccess("Полное меню заменено на сервере."); setConfirmation("");
-      await list.reload();
-    } catch (e) { setError(messageOf(e)); }
-    finally { setBusy(false); }
-  };
-  return <div className="space-y-5">
-    <h2 className="text-2xl font-semibold">Меню ресторана</h2>
-    <section className={cardClass}>
-      <div className="flex justify-between"><h3 className="font-semibold">Блюда (из Redis через GET /api/POS/menu)</h3><button className="text-sm text-blue-700" onClick={() => void list.reload().catch(() => {})}>Обновить</button></div>
-      <Err error={list.error}/>{list.loading && <p>Загрузка…</p>}
-      {list.value?.length === 0 && <p className="text-gray-500">Меню пусто</p>}
-      {list.value?.map((dish: NativeDish) => <p className="py-2 border-t" key={dish.dishId}>{dish.name}</p>)}
-      <p className="text-xs text-gray-500">Сервер отдаёт названия и ID, но не возвращает состав рецептов.</p>
-    </section>
-    {(["owner", "admin"].includes(role)) && <form className={cardClass} onSubmit={(e) => void replace(e)}>
-      <h3 className="font-semibold">Полная замена меню (дополнительно)</h3>
-      <Info><strong>Опасно:</strong> <code>LoadRestaurantMenu</code> удаляет ВСЕ старые блюда и создаёт новые ID. Это не операция «добавить блюдо». Используй только если у тебя полный JSON всего меню и всех рецептов.</Info>
-      <label className="block text-sm">JSON: название блюда → название продукта → целое количество<textarea className={inputClass + " font-mono text-sm mt-2"} rows={9} value={raw} onChange={(e) => setRaw(e.target.value)} /></label>
-      <label className="block text-sm">Для подтверждения напиши <b>ЗАМЕНИТЬ</b><input value={confirmation} onChange={(e) => setConfirmation(e.target.value)} className={inputClass}/></label>
-      <Err error={error}/>{success && <p className="text-green-700" role="status">{success}</p>}
-      <button disabled={busy || confirmation !== "ЗАМЕНИТЬ"} className="bg-red-700 text-white px-4 py-2 rounded-lg disabled:opacity-50">{busy ? "Сохранение…" : "Заменить ВСЁ меню"}</button>
-    </form>}
-  </div>;
-}
-
-export function NativeProductsPage() {
-  const { restaurantId, role } = useRestaurantContext();
-  const [raw, setRaw] = useState('[\n  { "name": "Молоко", "shelfLifeSeconds": 86400, "unit": "л" }\n]');
-  const [confirmation, setConfirmation] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const save = async (e: FormEvent) => {
-    e.preventDefault(); setError(""); setSuccess("");
-    if (confirmation !== "УДАЛИТЬ ВСЁ") { setError("Подтверди полную замену каталога"); return; }
-    try {
-      const parsed: unknown = JSON.parse(raw);
-      if (!Array.isArray(parsed) || parsed.length === 0 || parsed.length > 1000) throw Error("Нужен непустой массив JSON из максимум 1000 продуктов");
-      for (const item of parsed) {
-        if (!item || typeof item.name !== "string" || !item.name.trim() ||
-            !Number.isInteger(item.shelfLifeSeconds) || item.shelfLifeSeconds <= 0 ||
-            typeof item.unit !== "string" || !item.unit.trim())
-          throw Error("Каждый продукт должен содержать name, положительный shelfLifeSeconds и unit");
-      }
-      const items = parsed as NativeProductTemplate[];
-      const names = items.map((p) => p.name.trim().toLowerCase());
-      if (new Set(names).size !== names.length) throw Error("В JSON повторяются названия продуктов");
-      setBusy(true);
-      await api.replaceCatalog(restaurantId, items);
-      setSuccess("Команда полной замены каталога выполнена. Текущий каталог невозможно перечитать через пользовательский API.");
-      setConfirmation("");
-    } catch (e) { setError(messageOf(e)); }
-    finally { setBusy(false); }
-  };
-  return <div className="space-y-5">
-    <h2 className="text-2xl font-semibold">Продукты</h2>
-    <Info><strong>Ограничение API:</strong> нет защищённого пользовательского метода получения каталога и метода добавления одного продукта. <code>SetProducts</code> сначала удаляет ВСЕ продукты и генерирует новые ID. Поэтому безопасное добавление, редактирование одного продукта и экспорт реального каталога недоступны. На экране нет выдуманного списка «молоко, хлеб, яйца».</Info>
-    {(["owner", "admin"].includes(role)) && <form className={cardClass} onSubmit={(e) => void save(e)}>
-      <h3 className="font-semibold">Опасная операция: полная замена каталога</h3>
-      <p className="text-sm text-gray-600">Поле ниже — только пример формата, а не продукты из твоей базы. Подставь <b>весь</b> каталог. Бэкенд может отказать в удалении продуктов, если есть связи с поставками и рецептами.</p>
-      <textarea rows={10} className={inputClass + " font-mono text-sm"} value={raw} onChange={(e) => setRaw(e.target.value)} aria-label="Полный каталог JSON" />
-      <label className="block text-sm">Введи <b>УДАЛИТЬ ВСЁ</b>, если понимаешь последствия<input className={inputClass} value={confirmation} onChange={(e) => setConfirmation(e.target.value)} /></label>
-      <Err error={error}/>{success && <p className="text-green-700" role="status">{success}</p>}
-      <button disabled={busy || confirmation !== "УДАЛИТЬ ВСЁ"} className="bg-red-700 text-white px-4 py-2 rounded disabled:opacity-50">{busy ? "Отправка…" : "Заменить весь каталог"}</button>
-    </form>}
-  </div>;
-}
-
-export function NativeDeliveriesPage() {
-  const { restaurantId, role } = useRestaurantContext();
-  const [supplyId, setSupplyId] = useState("");
-  const [quantities, setQuantities] = useState('[]');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const decide = async (type: "accept" | "reject") => {
-    setError(""); setSuccess("");
-    try {
-      if (!isGuid(supplyId.trim())) throw Error("Укажи корректный supplyId (UUID)");
-      setBusy(true);
-      if (type === "reject") {
-        if (!window.confirm("Отклонить поставку?")) return;
-        await api.rejectSupply(restaurantId, supplyId.trim());
-      } else {
-        const items: unknown = JSON.parse(quantities);
-        if (!Array.isArray(items) || !items.length || items.some((p) => !p || !isGuid(p.productId) || !Number.isInteger(p.factQuantity) || p.factQuantity < 0))
-          throw Error('Нужен непустой JSON-массив { "productId": "UUID", "factQuantity": 5 }');
-        if (!window.confirm("Принять поставку с указанными фактическими количествами?")) return;
-        await api.acceptSupply(supplyId.trim(), items);
-      }
-      setSuccess(type === "accept" ? "Поставка принята сервером." : "Поставка отклонена сервером.");
-    } catch (e) { setError(messageOf(e)); }
-    finally { setBusy(false); }
-  };
-  return <div className="space-y-5"><h2 className="text-2xl font-semibold">Поставки</h2>
-    <Info>В Useless-Corpse API нет метода получения списка поставок. Но методы <code>AcceptSupply</code> и <code>RejectSupply</code> есть. Если известен ID поставки и ID её продуктов, ими можно воспользоваться без изменения бэкенда.</Info>
-    {(["owner", "admin"].includes(role)) ? <section className={cardClass}>
-      <label className="block text-sm">ID поставки (supplyId)<input className={inputClass} value={supplyId} onChange={(e) => setSupplyId(e.target.value)} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" /></label>
-      <label className="block text-sm">Фактически принятые позиции (JSON)<textarea rows={6} className={inputClass + " font-mono text-sm"} value={quantities} onChange={(e) => setQuantities(e.target.value)} placeholder='[{"productId":"...","factQuantity":5}]'/></label>
-      <Err error={error}/>{success && <p role="status" className="text-green-700">{success}</p>}
-      <div className="flex gap-3 flex-wrap"><button className={primaryClass} disabled={busy} onClick={() => void decide("accept")}>Принять</button>
-        <button className="bg-red-700 text-white px-4 py-2 rounded-lg disabled:opacity-50" disabled={busy} onClick={() => void decide("reject")}>Отклонить</button></div>
-    </section> : <p className="text-gray-600">Для решения о приёмке нужна роль владельца или администратора.</p>}
+    <CreateTerminalForm/>
   </div>;
 }
 
@@ -294,25 +185,45 @@ export function NativeWarehousePage() {
   const products = active ? live.products : null;
   const stops = active ? live.stops : null;
   const suggestions = active ? live.recommendations : null;
-  const total = products?.reduce((v, p) => v + p.quantity, 0);
-  return <div className="space-y-5"><h2 className="text-2xl font-semibold">Склад онлайн</h2>
-    <p className="text-sm text-gray-500">Получает данные от существующего SignalR-хаба <code>/hubs/notifications</code>. Снимок появляется после серверной рассылки события, а не при первом подключении.</p>
-    <div className="grid sm:grid-cols-3 gap-4">
-      <div className={cardClass}><h3>Остаток в партиях</h3><p className="text-3xl font-bold">{total ?? "—"}</p></div>
-      <div className={cardClass}><h3>Партий</h3><p className="text-3xl font-bold">{products?.length ?? "—"}</p></div>
-      <div className={cardClass}><h3>Блюд в стоп-листе</h3><p className="text-3xl font-bold">{stops?.length ?? "—"}</p></div>
+  const [stockView, setStockView] = useState<"products" | "batches">("products");
+  const total = products?.reduce((sum, p) => sum + p.quantity, 0);
+  // A product can have many FoodStock rows with different deliveries / expiry dates.
+  // Aggregate only in the summary mode; never mutate the actual batch data.
+  const summary = Object.values((products ?? []).reduce<Record<string, { id: string; name: string; quantity: number; batches: number }>>((acc, batch) => {
+    const id = batch.productId || batch.productName;
+    if (!acc[id]) acc[id] = { id, name: batch.productName, quantity: 0, batches: 0 };
+    acc[id].quantity += batch.quantity;
+    acc[id].batches += 1;
+    return acc;
+  }, {}));
+  return <div className="space-y-6">
+    <Heading eyebrow="Остатки · SignalR" title="Склад онлайн" description="Актуальные партии, стоп-листы и рекомендации, полученные через серверную рассылку."/>
+    <div className="grid gap-4 sm:grid-cols-3">
+      <Stat label="Количество в партиях" value={total ?? "—"} icon={<Boxes size={22}/>} description="Сумма по последней рассылке"/>
+      <Stat label="Активных партий" value={products?.length ?? "—"} icon={<PackageCheck size={22}/>} description="ProductsUpdated"/>
+      <Stat label="Позиций в стоп-листе" value={stops?.length ?? "—"} icon={<AlertTriangle size={22}/>} description="StopListUpdated"/>
     </div>
-    <div className={cardClass}><h3 className="font-semibold">Партии продуктов (ProductsUpdated)</h3>
-      {products === null ? <Info>Ожидаем первое событие ProductsUpdated. Исходный API не предоставляет HTTP-метода чтения полного состояния.</Info> : products.length === 0 ? <p>В последней рассылке партии отсутствуют.</p> :
-        <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr><th className="p-2">Продукт</th><th className="p-2">Количество</th><th className="p-2">Годен до</th><th className="p-2">Поставка</th></tr></thead><tbody>{products.map((i, index) => <tr key={i.supplyId + i.productId + index} className="border-t"><td className="p-2">{i.productName}</td><td className="p-2">{i.quantity}</td><td className="p-2">{new Date(i.expiresAt).toLocaleString("ru-RU")}</td><td className="p-2 font-mono text-xs">{i.supplyId}</td></tr>)}</tbody></table></div>}
-    </div>
-    <div className="grid md:grid-cols-2 gap-4">
-      <div className={cardClass}><h3 className="font-semibold">Стоп-лист (StopListUpdated)</h3>
-        {stops === null ? <p className="text-sm text-gray-500">Нет рассылки</p> : stops.length ? stops.map((id) => <p key={id} className="border-t py-2 font-mono text-xs">Блюдо: {id}</p>) : <p className="text-sm">Стоп-лист пуст</p>}
+    <section className={`${surface} overflow-hidden`}>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-5 md:px-6"><div><h3 className="text-lg font-extrabold text-slate-900">Склад</h3><p className="mt-1 text-xs text-slate-500">Продукты и отдельные позиции FoodStock</p></div>
+        <div role="group" aria-label="Вид склада" className="flex rounded-xl bg-slate-100 p-1 text-xs font-bold">
+          <button type="button" aria-pressed={stockView === "products"} onClick={() => setStockView("products")} className={`rounded-lg px-3 py-2 transition ${stockView === "products" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-900"}`}>По продуктам</button>
+          <button type="button" aria-pressed={stockView === "batches"} onClick={() => setStockView("batches")} className={`rounded-lg px-3 py-2 transition ${stockView === "batches" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-900"}`}>По поставкам · FoodStock</button>
+        </div></div>
+      <div className="p-5 md:p-6">{products === null ? <Empty title="Ждём обновления склада">Как только сервер отправит ProductsUpdated, партии появятся здесь.</Empty> : products.length === 0 ? <Empty title="Список партий пуст">Последняя рассылка содержит пустой склад.</Empty> :
+        <div className="overflow-x-auto rounded-xl border border-slate-100"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-400"><tr><th className="px-4 py-3">Продукт</th><th className="px-4 py-3">Количество</th>{stockView === "batches" ? <><th className="px-4 py-3">Годен до</th><th className="px-4 py-3">Поставка</th><th className="px-4 py-3">FoodStock ID</th></> : <th className="px-4 py-3">Партий</th>}</tr></thead><tbody>{stockView === "products" ? summary.map((item) => <tr key={item.id} className="border-t border-slate-100 hover:bg-indigo-50/40"><td className="px-4 py-3 font-semibold text-slate-800">{item.name}</td><td className="px-4 py-3"><span className="rounded-lg bg-indigo-50 px-2.5 py-1 font-bold text-indigo-700">{item.quantity}</span></td><td className="px-4 py-3 text-slate-500">{item.batches}</td></tr>) : products.map((item, index) => <tr key={item.foodStockId || item.id || `${item.supplyId}-${item.productId}-${index}`} className="border-t border-slate-100 hover:bg-indigo-50/40"><td className="px-4 py-3 font-semibold text-slate-800">{item.productName}</td><td className="px-4 py-3"><span className="rounded-lg bg-indigo-50 px-2.5 py-1 font-bold text-indigo-700">{item.quantity}</span></td><td className="px-4 py-3 text-slate-600">{Number.isFinite(new Date(item.expiresAt).getTime()) ? new Date(item.expiresAt).toLocaleString("ru-RU") : "—"}</td><td title={item.supplyId} className="max-w-40 truncate px-4 py-3 font-mono text-xs text-slate-400">{item.supplyId}</td><td title={item.foodStockId || item.id || ""} className="max-w-40 truncate px-4 py-3 font-mono text-xs text-slate-400">{item.foodStockId || item.id || "—"}</td></tr>)}</tbody></table></div>}
       </div>
-      <div className={cardClass}><h3 className="font-semibold">Рекомендации (RecommendationsUpdated)</h3>
-        {suggestions === null ? <p className="text-sm text-gray-500">Нет рассылки</p> : suggestions.length ? suggestions.map((item, idx) => <pre key={idx} className="text-xs whitespace-pre-wrap border-t pt-2">{JSON.stringify(item, null, 2)}</pre>) : <p className="text-sm">Рекомендаций нет</p>}
-      </div>
+    </section>
+    <div className="grid gap-5 lg:grid-cols-2">
+      <section className={`${surface} p-5 md:p-6`}><h3 className="mb-4 flex items-center gap-2 text-lg font-extrabold"><AlertTriangle className="text-amber-500" size={20}/> Стоп-лист</h3>
+        {stops === null ? <Empty title="Стоп-лист пока не загружен">Данные появятся после обновления сервера.</Empty> : !stops.length ? <Empty title="Стоп-лист пуст">Ограничений по блюдам нет.</Empty> : <div className="space-y-2">{stops.map((id) => <div key={id} className="flex items-start gap-2.5 rounded-xl bg-rose-50 p-3 text-sm text-rose-900"><AlertTriangle size={17} className="mt-0.5 shrink-0"/><span className="min-w-0 break-all">Блюдо: {id}</span></div>)}</div>}
+      </section>
+      <section className={`${surface} p-5 md:p-6`}><h3 className="mb-4 flex items-center gap-2 text-lg font-extrabold"><CircleHelp className="text-indigo-500" size={20}/> Рекомендации</h3>
+        {suggestions === null ? <Empty title="Нет первого обновления">Ожидание RecommendationsUpdated.</Empty> : !suggestions.length ? <Empty title="Рекомендаций пока нет">Сервер не прислал рекомендаций в последнем событии.</Empty> : <div className="space-y-2">{suggestions.map((value, index) => {
+          const obj = value && typeof value === "object" ? value as Record<string, unknown> : {};
+          const title = [obj.title, obj.productName, obj.name, obj.message, obj.reason].find((s) => typeof s === "string" && s.trim());
+          return <details key={index} className="rounded-xl border border-slate-100 bg-slate-50 p-3.5"><summary className="cursor-pointer text-sm font-semibold text-slate-800">{typeof title === "string" ? title : `Рекомендация №${index + 1}`}</summary><pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap break-words border-t border-slate-200 pt-3 text-xs text-slate-500">{JSON.stringify(value, null, 2)}</pre></details>;
+        })}</div>}
+      </section>
     </div>
   </div>;
 }
@@ -337,22 +248,17 @@ export function NativeAnalyticsPage() {
   const { restaurantId } = useRestaurantContext();
   const live = useNativeLiveStore((s) => s.restaurantId === restaurantId ? s.analytics : null);
   const last = useNativeLiveStore((s) => s.restaurantId === restaurantId ? s.receivedAt : "");
-  const groups: { label: string; data: unknown[] | undefined }[] = [
-    { label: "Заказы", data: live?.orders },
-    { label: "Поставки", data: live?.supplies },
-    { label: "Порча / списания", data: live?.rot },
+  const groups: { label: string; data: unknown[] | undefined; icon: typeof ChartNoAxesCombined }[] = [
+    { label: "Заказы", data: live?.orders, icon: ClipboardList },
+    { label: "Поставки", data: live?.supplies, icon: Truck },
+    { label: "Порча и списания", data: live?.rot, icon: AlertTriangle },
   ];
-  return <div className="space-y-5"><h2 className="text-2xl font-semibold">Аналитика в реальном времени</h2>
-    <p className="text-sm text-gray-500">События <code>AnalyticsUpdated</code> из серверного <code>AnalStash</code>. Содержимое Redis используется без выдуманных денежных показателей.</p>
-    {live === null && <Info>Ожидаем первую рассылку AnalyticsUpdated. Сервер не отдаёт первичную историю аналитики по HTTP и не отправляет её автоматически при подключении.</Info>}
-    <div className="grid sm:grid-cols-3 gap-4">
-      {groups.map((g) => <section className={cardClass} key={g.label}><h3 className="text-gray-500 text-sm">{g.label}</h3><p className="text-3xl font-bold">{g.data?.length ?? "—"}</p></section>)}
-    </div>
-    {last && live && <p className="text-xs text-gray-500">Последняя рассылка: {new Date(last).toLocaleString("ru-RU")}</p>}
-    {groups.map((g) => <section key={g.label} className={cardClass}><h3 className="font-semibold">{g.label} — последние события</h3>
-      {g.data === undefined ? <p className="text-sm text-gray-500">Нет данных</p> : g.data.length === 0 ? <p className="text-sm">Событий нет</p> :
-        <div className="max-h-80 overflow-y-auto">{g.data.slice(-30).reverse().map((item, i) => <div key={i} className="border-t py-3 text-sm"><p>{eventDescription(item)}</p><p className="text-xs text-gray-500">{eventDate(item)}</p></div>)}</div>}
-    </section>)}
-    <p className="text-xs text-gray-500">Выручка и прибыль не вычисляются: бэкенд не предоставляет корректные цены продаж.</p>
+  return <div className="space-y-6">
+    <Heading eyebrow="События · AnalStash" title="Аналитика ресторана" description="История операций по данным последнего события AnalyticsUpdated из серверного Redis." aside={last && live ? <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500"><Clock3 size={15}/> {new Date(last).toLocaleString("ru-RU")}</span> : null}/>
+    <div className="grid gap-4 sm:grid-cols-3">{groups.map(({ label, data, icon: Icon }) => <Stat key={label} label={label} value={data?.length ?? "—"} icon={<Icon size={22}/>} description={live ? "Событий в последней рассылке" : "Нет первого события"}/>)}</div>
+    <div className="grid gap-5 lg:grid-cols-3">{groups.map(({ label, data, icon: Icon }) => <section key={label} className={`${surface} min-w-0 overflow-hidden`}>
+      <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-4"><Icon className="text-indigo-600" size={18}/><h3 className="font-extrabold text-slate-800">{label}</h3></div>
+      <div className="max-h-96 space-y-2 overflow-y-auto p-4">{!data ? <Empty title="Нет данных">Ожидание события SignalR.</Empty> : data.length === 0 ? <Empty title="Событий пока нет">В этой рассылке записей нет.</Empty> : data.slice(-30).reverse().map((item, index) => <div key={index} className="rounded-xl border border-slate-100 bg-slate-50 p-3.5 text-sm"><p className="break-words font-semibold text-slate-800">{eventDescription(item)}</p><p className="mt-1 text-xs text-slate-500">{eventDate(item)}</p></div>)}</div>
+    </section>)}</div>
   </div>;
 }

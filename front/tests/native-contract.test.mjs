@@ -6,6 +6,8 @@ const native = read('../src/shared/api/nativeBackendApi.ts');
 const routes = read('../src/app/router/index.tsx');
 const rest = read('../src/shared/api/restaurantsApi.ts');
 const views = read('../src/pages/native/NativePages.tsx');
+const catalog = read('../src/pages/native/NativeCatalogPage.tsx');
+const deliveries = read('../src/pages/native/NativeDeliveriesPage.tsx');
 
 test('uses only supplied backend command routes (no invented compatibility adapter)', () => {
   for (const name of ['GetUserRestaurants', 'GetRestaurantMembers', 'RemoveRestaurantMember', 'DirectInvite', 'SetProducts', 'LoadRestaurantMenu', 'AcceptSupply', 'RejectSupply']) {
@@ -21,13 +23,16 @@ test('POS user interface is removed, but read-only POS/menu can still be used', 
   assert.equal(existsSync(new URL('../src/pages/PosPointsPage.tsx', import.meta.url)),false);
 });
 test('product update is visibly destructive, never presented as safe merge', () => {
-  assert.ok(views.includes('УДАЛИТЬ ВСЁ'));
-  assert.ok(views.includes('replaceCatalog'));
+  assert.ok(catalog.includes('Заменить продукты и меню?'));
+  assert.ok(catalog.includes('await api.replaceCatalog(restaurantId, validated.products)'));
   assert.ok(!native.includes('/products/merge'));
 });
 test('native views do not make missing analytics / warehouse endpoint requests', () => {
   assert.ok(!native.includes('/analytics'));
   assert.ok(!native.includes('/snapshot'));
-  assert.ok(views.includes('нет метода получения списка поставок'));
-  assert.ok(views.includes('нет методов получения сводки склада'));
+  assert.ok(deliveries.includes('parseIncomingSupplies'));
+  assert.ok(deliveries.includes('api.acceptSupply'));
+  assert.ok(!native.includes('GetSupplies'));
+  assert.ok(views.includes('FoodStock'));
+  assert.ok(views.includes('По продуктам'));
 });

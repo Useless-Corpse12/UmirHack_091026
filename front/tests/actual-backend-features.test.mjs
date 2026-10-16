@@ -17,13 +17,28 @@ test("POS creation remains available as configuration, not a cash-register UI", 
   assert.match(read("src/app/router/index.tsx"), /path="terminals"/);
   assert.doesNotMatch(read("src/app/router/index.tsx"), /path="pos"/);
 });
-test("products then menu are submitted as one sequential action", () => {
+test("visual catalog validates ingredient names and sends full products before menu", () => {
   const src = read("src/pages/native/NativeCatalogPage.tsx");
-  const a = src.indexOf("await api.replaceCatalog(restaurantId, products)");
-  const b = src.indexOf("await api.replaceMenu(restaurantId, menu)");
+  const a = src.indexOf("await api.replaceCatalog(restaurantId, validated.products)");
+  const b = src.indexOf("await api.replaceMenu(restaurantId, validated.menu)");
   assert.ok(a > 0 && b > a);
-  assert.match(src, /if \(!productNames.has\(ingredient\)\)/);
-  assert.match(src, /продукты уже могут измениться|Продукты уже отправлены/i);
+  assert.match(src, /if \(!names.has\(item.name\)\)/);
+  assert.match(src, /Частичное сохранение/);
+  assert.match(src, /Заменить продукты и меню/);
+  assert.match(src, /Окей, отправить/);
+  assert.match(src, /Добавить ещё продукт/);
+  assert.match(src, /Конструктор меню/);
+  assert.match(src, /localStorage\.setItem\(draftKey/);
+});
+test("supplier key is fetched only on demand for owner, not stored in membership", () => {
+  const api = read("src/shared/api/nativeBackendApi.ts");
+  const settings = read("src/pages/SettingsPage.tsx");
+  assert.match(api, /async supplierApiKey\(restaurantId/);
+  assert.match(api, /normalizeRole\(entry.role\) !== "owner"/);
+  assert.match(api, /return typeof entry.apiKey === "string"/);
+  assert.match(settings, /nativeBackendApi\.supplierApiKey\(restaurantId/);
+  assert.match(settings, /Скопировать/);
+  assert.doesNotMatch(settings, /localStorage\.setItem/);
 });
 test("SignalR LongPolling uses the original notification hub and listens to all four broadcasts", () => {
   const src = read("src/shared/realtime/nativeSignalR.ts");
@@ -35,5 +50,6 @@ test("SignalR LongPolling uses the original notification hub and listens to all 
 });
 test("manual API key is not falsely advertised as persisted in the unchanged server", () => {
   const src = read("src/pages/RestaurantsPage.tsx");
-  assert.match(src, /ручной ввод здесь пока технически невозможен/);
+  assert.doesNotMatch(src, /ручной ввод здесь пока технически невозможен/);
+  assert.match(read("src/shared/api/nativeBackendApi.ts"), /restaurantName: name/);
 });

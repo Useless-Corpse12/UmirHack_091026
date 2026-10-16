@@ -17,10 +17,10 @@ import { ProtectedRoute, RestaurantRoleGuard } from "./ProtectedRoute";
 import { RestaurantBoundary } from "../../features/restaurant-runtime/RestaurantBoundary";
 import { apiConfig } from "../../shared/api/config";
 import { NativeCatalogPage } from "../../pages/native/NativeCatalogPage";
-import { NativeTerminalsPage } from "../../pages/native/NativeTerminalsPage";
+import { NativeDeliveriesPage } from "../../pages/native/NativeDeliveriesPage";
 import {
   NativeRestaurantLayout, NativeDashboardPage,
-  NativeEmployeesPage, NativeDeliveriesPage,
+  NativeEmployeesPage,
   NativeWarehousePage, NativeAnalyticsPage,
 } from "../../pages/native/NativePages";
 
@@ -46,9 +46,9 @@ export const AppRouter = () => (
           <Route path="analytics" element={live ? <NativeAnalyticsPage /> : <AnalyticsPage />} />
           <Route path="warehouse" element={live ? <NativeWarehousePage /> : <WarehousePage />} />
           <Route path="deliveries" element={live ? <NativeDeliveriesPage /> : <DeliveriesPage />} />
-          <Route path="menu" element={live ? <NativeCatalogPage /> : guard(<MenuPage />)} />
+          <Route path="menu" element={live ? guard(<NativeCatalogPage />) : guard(<MenuPage />)} />
           <Route path="products" element={live ? <Navigate to="../menu" replace /> : guard(<ProductsPage />)} />
-          {live && <Route path="terminals" element={guard(<NativeTerminalsPage />)} />}
+          {live && <Route path="terminals" element={<Navigate to="../employees" replace />} />}
           <Route path="employees" element={live ? guard(<NativeEmployeesPage />) : guard(<EmployeesPage />)} />
           <Route path="settings" element={guard(<SettingsPage />, ["owner"])} />
         </Route>

@@ -5,7 +5,7 @@ import {
   refreshRestaurant,
   useRestaurantRuntime,
 } from "../features/restaurant-runtime/runtimeStore";
-import { authApi, apiConfig } from "../shared/api/services";
+import { authApi } from "../shared/api/services";
 import { ErrorNotice } from "../shared/ui/Feedback";
 import { dateLabel } from "../shared/lib/format";
 import { ExpiryAlerts } from "../features/expiry/ExpiryAlerts";
@@ -17,15 +17,15 @@ export const RestaurantDetailPage = () => {
   const { connection, realtimeError } = useRestaurantRuntime();
   const data = useDashboard();
   const tabs = [
-    { name: "Дашборд", path: "dashboard" },
+    { name: "Обзор", path: "dashboard" },
     { name: "Аналитика", path: "analytics" },
     { name: "Склад", path: "warehouse" },
-    { name: "Поставки", path: "deliveries" },
+    { name: "Приёмка", path: "deliveries" },
     ...(["owner", "admin"].includes(membership.role)
       ? [
+          { name: "Сотрудники", path: "employees" },
           { name: "Продукты", path: "products" },
           { name: "Меню", path: "menu" },
-          { name: "Сотрудники", path: "employees" },
         ]
       : []),
     ...(membership.role === "owner"
@@ -133,12 +133,6 @@ export const RestaurantDetailPage = () => {
         </div>
       </nav>
       <main className="max-w-7xl mx-auto px-6 py-8">
-        {apiConfig.mode === "mock" && (
-          <p className="mb-5 p-3 bg-amber-50 border border-amber-200 rounded text-sm">
-            Демонстрационный сервис. Реальные данные сервера подключаются через
-            режим live.
-          </p>
-        )}
         <ExpiryAlerts key={membership.restaurantId} />
         <Outlet key={membership.restaurantId} />
       </main>

@@ -55,7 +55,7 @@ export const LoginPage = () => {
       <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
         <h1 className="text-2xl font-bold text-center mb-5">Вход в систему</h1>
 
-        {apiConfig.mode === "mock" ? (
+        {apiConfig.mode === "mock" && (
           <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
             <p className="font-medium">Демонстрационный режим</p>
             <p className="mt-1">
@@ -69,15 +69,6 @@ export const LoginPage = () => {
             >
               Войти как владелец (демо)
             </button>
-          </div>
-        ) : (
-          <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-            <p className="font-medium">Подключён настоящий бэкенд</p>
-            <p className="mt-1">
-              Тестовый аккаунт owner@demo.test существует только в демо API.
-              Чтобы войти с ним, остановите текущий сервер и запустите
-              <code className="mx-1 font-semibold">npm run dev</code>.
-            </p>
           </div>
         )}
 

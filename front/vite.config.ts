@@ -3,33 +3,35 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig(({ mode }) => {
-  // Optional development proxy: the browser talks to Vite on :5173 and Vite
-  // forwards API and WebSocket traffic to the separately running backend.
-  // Backend is never started or modified by this configuration.
   const env = loadEnv(mode, process.cwd(), "");
-  const backendTarget = process.env.API_PROXY_TARGET || env.API_PROXY_TARGET;
+  const isLive = mode === "live";
+  // Only the React/Vite development proxy is configured here.
+  // The original ASP.NET backend is NOT started or modified.
+  const backendTarget =
+    process.env.API_PROXY_TARGET || env.API_PROXY_TARGET || "http://127.0.0.1:5067";
+  const demoPort = process.env.DEMO_PORT || "5068";
 
   return {
     plugins: [react(), tailwindcss()],
     server: {
+      strictPort: true,
       proxy: {
-        "/demo-api": {
-          target: "http://127.0.0.1:" + (process.env.DEMO_PORT || 5068),
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/demo-api/, ""),
-        },
-        "/demo-realtime": {
-          target: "ws://127.0.0.1:" + (process.env.DEMO_PORT || 5068),
-          ws: true,
-          rewrite: (path) => path.replace(/^\/demo-realtime/, "/ws/restaurants"),
-        },
-        ...(backendTarget
-          ? {
-              "/api": { target: backendTarget, changeOrigin: true },
-              "/ws": { target: backendTarget, changeOrigin: true, ws: true },
-              "/hubs": { target: backendTarget, changeOrigin: true, ws: true },
-            }
-          : {}),
+        // Demo API must never be proxied in live mode.
+        ...(!isLive ? {
+          "/demo-api": {
+            target: `http://127.0.0.1:${demoPort}`,
+            changeOrigin: true,
+            rewrite: (path: string) => path.replace(/^\/demo-api/, ""),
+          },
+          "/demo-realtime": {
+            target: `ws://127.0.0.1:${demoPort}`,
+            ws: true,
+            rewrite: (path: string) => path.replace(/^\/demo-realtime/, "/ws/restaurants"),
+          },
+        } : {}),
+        "/api": { target: backendTarget, changeOrigin: true },
+        "/ws": { target: backendTarget, changeOrigin: true, ws: true },
+        "/hubs": { target: backendTarget, changeOrigin: true, ws: true },
       },
     },
   };
