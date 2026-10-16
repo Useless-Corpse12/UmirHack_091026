@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
@@ -8,217 +9,223 @@ namespace POS_immitation;
 
 public partial class POSMainMenu : Form
 {
-    private FlowLayoutPanel panelMenu;
-    private FlowLayoutPanel panelRecommendations;
-    private FlowLayoutPanel panelCart;
-    private Label lblTotal;
+    private readonly ApiService _api;
+    private List<DishOrderItem> _currentOrder = new();
+    private Dictionary<Guid, decimal> _dishPrices = new();
+    
+    private FlowLayoutPanel panelMenu = null!;
+    private FlowLayoutPanel panelRecommendations = null!;
+    private FlowLayoutPanel panelCart = null!;
+    private Label lblTotal = null!;
+    private Label lblStatus = null!;
+    private Button btnCheckout = null!;
+    private Button btnCancel = null!;
 
     public POSMainMenu()
     {
+        _api = AppState.Api;
         InitializeComponent();
-        this.Text = $"POS Терминал - Ресторан: {AppState.RestaurantId}";
-        this.Size = new Size(1000, 700);
-        this.StartPosition = FormStartPosition.CenterScreen;
-        
         SetupUi();
-        LoadInitialData();
+        LoadDataAsync();
     }
 
     private void SetupUi()
     {
-        var topPanel = new Panel { Dock = DockStyle.Top, Height = 50, BackColor = Color.LightGray };
-        var btnRefresh = new Button { Text = "Обновить меню", Location = new Point(10, 10), Width = 150 };
-        btnRefresh.Click += async (s, e) => await LoadInitialData();
-        
-        var btnExit = new Button { Text = "Выход", Location = new Point(this.Width - 160, 10), Width = 100, BackColor = Color.IndianRed };
-        btnExit.Click += (s, e) => { AppState.Clear(); Application.Exit(); };
+        this.Text = "POS-Terminal";
+        this.Size = new Size(1000, 700);
+        this.StartPosition = FormStartPosition.CenterScreen;
 
-        topPanel.Controls.AddRange(new Control[] { btnRefresh, btnExit });
+        var topPanel = new Panel { Dock = DockStyle.Top, Height = 60, BackColor = Color.LightGray };
+        var lblTitle = new Label { Text = "New Order", Dock = DockStyle.Left, Width = 200, Font = new Font("Arial", 14, FontStyle.Bold), TextAlign = ContentAlignment.MiddleCenter };
+        lblStatus = new Label { Text = "Ready", Dock = DockStyle.Fill, Font = new Font("Arial", 12), TextAlign = ContentAlignment.MiddleRight, Padding = new Padding(0, 0, 20, 0) };
+        topPanel.Controls.Add(lblStatus);
+        topPanel.Controls.Add(lblTitle);
 
-        var mainSplit = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Vertical, SplitterDistance = 600 };
+        var mainTable = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 3, RowCount = 1 };
+        mainTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
+        mainTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
+        mainTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
 
-        var menuGroup = new GroupBox { Dock = DockStyle.Fill, Text = "Меню" };
+        var menuPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(5) };
         panelMenu = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoScroll = true, WrapContents = true };
-        menuGroup.Controls.Add(panelMenu);
-        mainSplit.Panel1.Controls.Add(menuGroup);
+        menuPanel.Controls.Add(panelMenu);
 
-        var rightSplit = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal, SplitterDistance = 200 };
+        var recPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(5), BackColor = Color.Beige };
+        var lblRec = new Label { Text = "Priority Items", Dock = DockStyle.Top, Height = 30, Font = new Font("Arial", 11, FontStyle.Bold), TextAlign = ContentAlignment.MiddleCenter };
+        panelRecommendations = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoScroll = true, WrapContents = true };
+        recPanel.Controls.Add(panelRecommendations);
+        recPanel.Controls.Add(lblRec);
+
+        var cartPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(5) };
+        panelCart = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoScroll = true, WrapContents = false, FlowDirection = FlowDirection.TopDown };
         
-        var recGroup = new GroupBox { Dock = DockStyle.Fill, Text = "Рекомендации" };
-        panelRecommendations = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoScroll = true, WrapContents = true, BackColor = Color.LightYellow };
-        recGroup.Controls.Add(panelRecommendations);
-        rightSplit.Panel1.Controls.Add(recGroup);
+        var bottomCartPanel = new Panel { Dock = DockStyle.Bottom, Height = 100 };
+        lblTotal = new Label { Text = "Total: 0 RUB", Dock = DockStyle.Fill, Font = new Font("Arial", 14, FontStyle.Bold), TextAlign = ContentAlignment.MiddleCenter };
+        btnCheckout = new Button { Text = "CHECKOUT", Dock = DockStyle.Right, Width = 150, BackColor = Color.LightGreen, Font = new Font("Arial", 12, FontStyle.Bold) };
+        btnCancel = new Button { Text = "Cancel", Dock = DockStyle.Left, Width = 100, BackColor = Color.LightCoral };
 
-        var cartGroup = new GroupBox { Dock = DockStyle.Fill, Text = "Текущий заказ" };
-        var cartLayout = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 3, ColumnCount = 1 };
-        cartLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-        cartLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
-        cartLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 50F));
+        btnCheckout.Click += BtnCheckout_Click;
+        btnCancel.Click += BtnCancel_Click;
 
-        panelCart = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoScroll = true, WrapContents = true, BackColor = Color.WhiteSmoke };
-        cartLayout.Controls.Add(panelCart, 0, 0);
-
-        lblTotal = new Label { Text = "Позиций: 0", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight, Font = new Font(Font.FontFamily, 12, FontStyle.Bold) };
-        cartLayout.Controls.Add(lblTotal, 0, 1);
-
-        var cartButtons = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft };
-        var btnCancel = new Button { Text = "Отмена", Width = 100, Height = 40, BackColor = Color.Orange };
-        btnCancel.Click += async (s, e) => await CancelOrder();
-        var btnPay = new Button { Text = "Оплатить", Width = 100, Height = 40, BackColor = Color.LightGreen };
-        btnPay.Click += async (s, e) => await PayOrder();
-
-        cartButtons.Controls.AddRange(new Control[] { btnPay, btnCancel });
-        cartLayout.Controls.Add(cartButtons, 0, 2);
+        bottomCartPanel.Controls.Add(lblTotal);
+        bottomCartPanel.Controls.Add(btnCheckout);
+        bottomCartPanel.Controls.Add(btnCancel);
         
-        cartGroup.Controls.Add(cartLayout);
-        rightSplit.Panel2.Controls.Add(cartGroup);
+        cartPanel.Controls.Add(panelCart);
+        cartPanel.Controls.Add(bottomCartPanel);
 
-        mainSplit.Panel2.Controls.Add(rightSplit);
+        mainTable.Controls.Add(menuPanel, 0, 0);
+        mainTable.Controls.Add(recPanel, 1, 0);
+        mainTable.Controls.Add(cartPanel, 2, 0);
 
-        this.Controls.AddRange(new Control[] { topPanel, mainSplit });
+        this.Controls.Add(mainTable);
+        this.Controls.Add(topPanel);
     }
 
-    private async Task LoadInitialData()
+    private async void LoadDataAsync()
     {
-        AppState.Menu = await AppState.Api.GetMenuAsync(AppState.RestaurantId);
-        AppState.StopList = await AppState.Api.GetStopListAsync(AppState.RestaurantId);
-        AppState.Recommendations = await AppState.Api.GetRecommendationsAsync(AppState.RestaurantId);
-        
-        RenderMenu();
-        RenderRecommendations();
-        RenderCart();
-    }
-
-    private void RenderMenu()
-    {
+        lblStatus.Text = "Loading menu...";
         panelMenu.Controls.Clear();
-        foreach (var dish in AppState.Menu)
-        {
-            var btn = new Button 
-            { 
-                Text = dish.Name, 
-                Width = 180, 
-                Height = 80, 
-                Margin = new Padding(5),
-                TextAlign = ContentAlignment.MiddleCenter
-            };
-
-            if (AppState.StopList.Contains(dish.Id))
-            {
-                btn.Enabled = false;
-                btn.BackColor = Color.LightGray;
-                btn.ForeColor = Color.Red;
-                btn.Text += "\n(НЕТ В НАЛИЧИИ)";
-            }
-            else
-            {
-                btn.BackColor = Color.White;
-                btn.Click += (s, e) => AddToCart(dish);
-            }
-            panelMenu.Controls.Add(btn);
-        }
-    }
-
-    private void RenderRecommendations()
-    {
         panelRecommendations.Controls.Clear();
-        if (AppState.Recommendations.Count == 0)
+        _dishPrices.Clear();
+
+        if (AppState.RestaurantId == Guid.Empty)
         {
-            panelRecommendations.Controls.Add(new Label { Text = "Нет рекомендаций", AutoSize = true });
+            lblStatus.Text = "Error: RestaurantId not set";
             return;
         }
 
-        foreach (var rec in AppState.Recommendations)
+        var dishes = await _api.GetMenuAsync(AppState.RestaurantId);
+        var recs = await _api.GetRecommendationsAsync(AppState.RestaurantId);
+        var stopList = await _api.GetStopListAsync(AppState.RestaurantId);
+
+        foreach (var dish in dishes)
         {
-            var btn = new Button 
-            { 
-                Text = $"{rec.Name}\n(Счёт: {rec.Score:F1})", 
-                Width = 180, 
-                Height = 70, 
-                Margin = new Padding(5),
-                BackColor = Color.LightGoldenrodYellow,
-                TextAlign = ContentAlignment.MiddleCenter
-            };
-            btn.Click += (s, e) => 
-            {
-                var dish = AppState.Menu.FirstOrDefault(d => d.Id == rec.DishId);
-                if (dish != null && !AppState.StopList.Contains(dish.Id))
-                {
-                    AddToCart(dish);
-                }
-            };
-            panelRecommendations.Controls.Add(btn);
-        }
-    }
+            if (stopList.Contains(dish.Id)) continue;
 
-    private void AddToCart(DishDto dish)
-    {
-        _ = AddToCartAsync(dish);
-    }
-
-    private async Task AddToCartAsync(DishDto dish)
-    {
-        AppState.CurrentCartId = await AppState.Api.AddToCartAsync(AppState.RestaurantId, AppState.CurrentCartId, dish.Id);
-        AppState.Cart.Add(dish);
-        RenderCart();
-    }
-
-    private void RenderCart()
-    {
-        panelCart.Controls.Clear();
-
-        foreach (var dish in AppState.Cart)
-        {
-            var btn = new Button 
-            { 
-                Text = dish.Name, 
-                Width = 250, 
-                Height = 40, 
-                Margin = new Padding(3),
-                BackColor = Color.MistyRose,
-                TextAlign = ContentAlignment.MiddleLeft
-            };
-            btn.Click += (s, e) => 
-            {
-                AppState.Cart.Remove(dish);
-                RenderCart();
-            };
-            panelCart.Controls.Add(btn);
+            _dishPrices[dish.Id] = dish.Price;
+            var btn = CreateDishButton(dish, Color.White, () => AddToOrder(dish));
+            panelMenu.Controls.Add(btn);
         }
 
-        lblTotal.Text = $"Позиций: {AppState.Cart.Count}";
+        foreach (var rec in recs.Take(5))
+        {
+            var dish = dishes.FirstOrDefault(d => d.Id == rec.DishId);
+            if (dish != null)
+            {
+                var btn = CreateDishButton(dish, Color.LightYellow, () => AddToOrder(dish));
+                panelRecommendations.Controls.Add(btn);
+            }
+        }
+
+        lblStatus.Text = "Ready";
+        UpdateOrderUI();
     }
 
-    private async Task PayOrder()
+    private Button CreateDishButton(DishDto dish, Color bgColor, Action onClick)
     {
-        if (AppState.Cart.Count == 0 || string.IsNullOrEmpty(AppState.CurrentCartId)) return;
-
-        var success = await AppState.Api.CreateOrderAsync(AppState.RestaurantId, AppState.CurrentCartId);
-        if (success)
+        var btn = new Button
         {
-            MessageBox.Show("Заказ успешно оплачен!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            AppState.Cart.Clear();
-            AppState.CurrentCartId = null;
-            RenderCart();
-            await LoadInitialData();
+            Text = $"{dish.Name}\n{dish.Price} RUB",
+            Width = panelMenu.Width / 2 - 15,
+            Height = 70,
+            BackColor = bgColor,
+            Font = new Font("Arial", 10, FontStyle.Bold),
+            TextAlign = ContentAlignment.MiddleCenter,
+            Margin = new Padding(3)
+        };
+        btn.Click += (s, e) => onClick();
+        return btn;
+    }
+
+    private void AddToOrder(DishDto dish)
+    {
+        var index = _currentOrder.FindIndex(x => x.DishId == dish.Id);
+        if (index != -1)
+        {
+            _currentOrder[index] = _currentOrder[index] with { Quantity = _currentOrder[index].Quantity + 1 };
         }
         else
         {
-            MessageBox.Show("Ошибка при оплате.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            _currentOrder.Add(new DishOrderItem(dish.Id, 1));
         }
+        UpdateOrderUI();
     }
 
-    private async Task CancelOrder()
+    private void RemoveFromOrderById(Guid dishId)
     {
-        if (AppState.Cart.Count == 0 || string.IsNullOrEmpty(AppState.CurrentCartId)) return;
+        var index = _currentOrder.FindIndex(x => x.DishId == dishId);
+        if (index != -1)
+        {
+            var item = _currentOrder[index];
+            if (item.Quantity <= 1)
+            {
+                _currentOrder.RemoveAt(index);
+            }
+            else
+            {
+                _currentOrder[index] = item with { Quantity = item.Quantity - 1 };
+            }
+        }
+        UpdateOrderUI();
+    }
 
-        var success = await AppState.Api.CancelCartAsync(AppState.RestaurantId, AppState.CurrentCartId);
+    private void UpdateOrderUI()
+    {
+        panelCart.Controls.Clear();
+        decimal total = 0;
+        
+        foreach (var item in _currentOrder)
+        {
+            decimal price = _dishPrices.GetValueOrDefault(item.DishId, 0);
+            decimal lineTotal = price * item.Quantity;
+            total += lineTotal;
+
+            var btn = new Button
+            {
+                Text = $"{item.DishId.ToString()[..4]}...\nQty: {item.Quantity} | {lineTotal} RUB",
+                Width = panelCart.Width - 20,
+                Height = 50,
+                BackColor = Color.LightBlue,
+                Font = new Font("Arial", 10),
+                Margin = new Padding(2)
+            };
+            
+            btn.Click += (s, e) => RemoveFromOrderById(item.DishId);
+            panelCart.Controls.Add(btn);
+        }
+
+        lblTotal.Text = $"Total: {total} RUB";
+    }
+
+    private async void BtnCheckout_Click(object? sender, EventArgs e)
+    {
+        if (_currentOrder.Count == 0) return;
+
+        btnCheckout.Enabled = false;
+        lblStatus.Text = "Processing order...";
+
+        bool success = await _api.CheckoutAsync(AppState.RestaurantId, _currentOrder);
+
         if (success)
         {
-            MessageBox.Show("Корзина очищена.", "Отмена", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            AppState.Cart.Clear();
-            AppState.CurrentCartId = null;
-            RenderCart();
+            lblStatus.Text = "Order completed successfully";
+            _currentOrder.Clear();
+            UpdateOrderUI();
+            LoadDataAsync(); 
         }
+        else
+        {
+            lblStatus.Text = "Error: insufficient stock or network failure";
+        }
+
+        btnCheckout.Enabled = true;
+    }
+
+    private void BtnCancel_Click(object? sender, EventArgs e)
+    {
+        _currentOrder.Clear();
+        UpdateOrderUI();
+        lblStatus.Text = "Order cleared";
     }
 }

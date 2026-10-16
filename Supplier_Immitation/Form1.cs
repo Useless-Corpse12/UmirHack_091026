@@ -30,7 +30,7 @@ public partial class Form1 : Form
         int inputWidth = 500;
 
         var lblAddress = new Label { Text = "Адрес API:", Location = new System.Drawing.Point(20, y), Width = labelWidth };
-        txtApiAddress = new TextBox { Location = new System.Drawing.Point(150, y), Width = inputWidth, Text = "https://localhost:5067" };
+        txtApiAddress = new TextBox { Location = new System.Drawing.Point(150, y), Width = inputWidth, Text = "http://localhost:5067" };
         this.Controls.Add(lblAddress);
         this.Controls.Add(txtApiAddress);
         y += 35;
@@ -150,7 +150,7 @@ public partial class Form1 : Form
         try
         {
             Log("Запрос списка продуктов...");
-            var url = $"{apiAddress}/api/supply/GetProducts?RestaurantId={restaurantId}&ApiKey={Uri.EscapeDataString(apiKey)}";
+            var url = $"{apiAddress}/api/supplier/GetProducts?RestaurantId={restaurantId}&ApiKey={Uri.EscapeDataString(apiKey)}";
 
             var response = await httpClient.GetAsync(url);
 
@@ -199,6 +199,7 @@ public partial class Form1 : Form
         string apiAddress = txtApiAddress.Text.TrimEnd('/');
         string restId = txtRestaurantId.Text.Trim();
         Guid restaurantId = Guid.Parse(restId);
+        string apiKey = txtApiKey.Text.Trim();
 
         var items = new List<object>();
 
@@ -206,7 +207,7 @@ public partial class Form1 : Form
         {
             if (row.Cells["Select"].Value is true)
             {
-                if (decimal.TryParse(row.Cells["Quantity"].Value?.ToString(), out decimal qty) && qty > 0)
+                if (int.TryParse(row.Cells["Quantity"].Value?.ToString(), out int qty) && qty > 0)
                 {
                     items.Add(new
                     {
@@ -234,13 +235,14 @@ public partial class Form1 : Form
             {
                 restaurantId = restaurantId,
                 supplyNumber = $"SUP-{DateTime.UtcNow:yyyyMMdd-HHmmss}",
+                apiKey = apiKey, 
                 items = items
             };
 
             var json = JsonSerializer.Serialize(payload);
             var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
 
-            var response = await httpClient.PostAsync($"{apiAddress}/api/supply/incoming", content);
+            var response = await httpClient.PostAsync($"{apiAddress}/api/supplier/incoming", content);
 
             if (response.IsSuccessStatusCode)
             {
@@ -267,5 +269,6 @@ public class ProductDto
 {
     public Guid ProductId { get; set; }
     public string ProductName { get; set; } = null!;
-    public int ShelfLife { get; set; }
+    public int ShelfLifeSeconds { get; set; }
+    public string Units { get; set; } = null!;
 }

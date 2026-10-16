@@ -10,6 +10,6 @@ public record SupplierGetProductsCommand(
 public record ProductItemDto(
     Guid ProductId,
     string ProductName,
-    int ShelfLifeDays,
+    int ShelfLifeSeconds,
     string Units
 );

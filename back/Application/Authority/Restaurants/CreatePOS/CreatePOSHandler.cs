@@ -11,10 +11,11 @@ public class CreatePOSHandler(AppDbContext dbContext, IPasswordHasher passwordHa
     {
         var cashierUser = User.Create(
             Guid.NewGuid(),
-            $"PointOfSale:{cmd.restaurantId}",
+            $"PointOfSale:{Guid.NewGuid()}",
             passwordHasher.Create(cmd.pincode)
         );
-
+        cashierUser.IsVerified = true;
+        
         var cashierRole = new UserRestaurant{
             UserId = cashierUser.Id,
             RestaurantId = cmd.restaurantId,

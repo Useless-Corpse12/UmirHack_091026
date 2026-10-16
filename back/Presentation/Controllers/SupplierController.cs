@@ -31,19 +31,12 @@ public class SupplierController(IMediator mediator):ApiController
     
     [HttpGet("[action]")]
     [AllowAnonymous]
-    public async Task<IActionResult> GetProducts(SupplierGetProductsCommand cmd)
+    public async Task<IActionResult> GetProducts(
+        [FromQuery] Guid restaurantId, 
+        [FromQuery] string apiKey)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
-        try
-        {
-            var products = await mediator.Send(cmd);
-            return Ok(products);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new {Message = ex.Message});
-        }
+        var cmd = new SupplierGetProductsCommand(restaurantId, apiKey);
+        var products = await mediator.Send(cmd);
+        return Ok(products);
     }
 }

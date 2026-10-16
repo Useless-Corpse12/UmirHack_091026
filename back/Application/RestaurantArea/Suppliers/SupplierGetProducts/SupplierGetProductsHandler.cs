@@ -16,10 +16,19 @@ public class SupplierGetProductsHandler(AppDbContext dbContext, IPasswordHasher 
         var restaurant = await _dbContext.Restaurants
             .FirstOrDefaultAsync(r => r.Id == cmd.RestaurantId, cnt);
 
-        if (restaurant == null || !passHasher.Validate(cmd.ApiKey, restaurant.ApiSecret))
+        if (restaurant == null)
         {
-            throw new Exception("Неверный Id или пароль");
+            throw new Exception($"Ресторан с ID {cmd.RestaurantId} не найден.");
         }
+
+        var incomingKey = cmd.ApiKey?.Trim();
+        var dbKey = restaurant.ApiSecret?.Trim();
+
+        if (string.IsNullOrEmpty(incomingKey) || incomingKey != dbKey)
+        {
+            throw new Exception($"Неверный API ключ. В базе лежит: '{dbKey}', а пришло: '{incomingKey}'");
+        }
+        
 
         var products = await _dbContext.Products
             .Where(p => p.RestaurantId == restaurant.Id)

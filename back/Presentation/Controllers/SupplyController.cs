@@ -16,7 +16,13 @@ public class SupplyController(IMediator mediator) : ApiController
     public async Task<IActionResult> AcceptSupply(AcceptSupplyCommand cmd)
     {
         if (!ModelState.IsValid)
-            return BadRequest(ModelState);
+        {
+            var errors = ModelState.Values
+                .SelectMany(v => v.Errors)
+                .Select(e => e.ErrorMessage)
+                .ToList();
+            return BadRequest(new { Message = "Ошибка валидации", Errors = errors });
+        }
 
         try
         {
