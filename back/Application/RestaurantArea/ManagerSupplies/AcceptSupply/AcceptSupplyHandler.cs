@@ -10,7 +10,8 @@ namespace back.Application.RestaurantArea.Supplies.AcceptSupply;
 public class AcceptSupplyHandler(
     AppDbContext dbContext, 
     IFoodStock foodStock,
-    IRotScheduler rotScheduler
+    IRotScheduler rotScheduler,
+    IAnalStash analStash
 ) : IRequestHandler<AcceptSupplyCommand, Unit>
 {
     public async Task<Unit> Handle(AcceptSupplyCommand cmd, CancellationToken cnt)
@@ -93,6 +94,13 @@ public class AcceptSupplyHandler(
                     .ToList();
 
                 await rotScheduler.ScheduleAsync(supply.RestaurantId, itemsForScheduler);
+                
+                await analStash.AddSupplyAsync(supply.RestaurantId, new 
+                { 
+                    supply.Id, 
+                    supply.SupplyNumber, 
+                    AcceptedBatches = productsForRedis.Count 
+                }, supply.CreatedAt);
             }
         }
 

@@ -128,6 +128,7 @@ public class RotCheckJob : IJob
 
         using var scope = _serviceProvider.CreateScope();
         var foodStock = scope.ServiceProvider.GetRequiredService<IFoodStock>();
+        var analStash = scope.ServiceProvider.GetRequiredService<IAnalStash>();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var stock = await foodStock.GetProductsAsync(restId);
@@ -163,5 +164,12 @@ public class RotCheckJob : IJob
                 (productId, supplyId, productInStock.Quantity)
             }
         );
+        
+        await analStash.AddRotAsync(restId, new 
+        { 
+            SupplyItemId = supplyItemId, 
+            ProductId = productId, 
+            Quantity = productInStock.Quantity 
+        }, DateTime.UtcNow);
     }
 }

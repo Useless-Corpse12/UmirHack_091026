@@ -7,7 +7,8 @@ namespace back.Application.RestaurantArea.POS.CreateOrder;
 
 public class CreateOrderHandler(
     AppDbContext dbContext,
-    IFoodStock foodStock)
+    IFoodStock foodStock,
+    IAnalStash analStash)
     : IRequestHandler<CreateOrderCommand, Guid>
 {
     public async Task<Guid> Handle(CreateOrderCommand cmd, CancellationToken cnt)
@@ -43,9 +44,15 @@ public class CreateOrderHandler(
                 });
             }
         }
-
+        
         dbContext.Orders.Add(order);
         await dbContext.SaveChangesAsync(cnt);
+        await analStash.AddOrderAsync(cmd.RestaurantId, new 
+        { 
+            order.Id, 
+            order.Status, 
+            ItemsCount = order.Items.Count 
+        }, order.CreatedAt);
 
         return order.Id;
     }

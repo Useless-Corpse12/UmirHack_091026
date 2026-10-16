@@ -1,11 +1,12 @@
 ﻿using back.Data;
 using back.Domain.Entities;
+using back.Infrastructure.Services.DaikonBaseContext;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace back.Application.RestaurantArea.Supplies.RejectSupply;
 
-public class RejectSupplyHandler(AppDbContext dbContext) : IRequestHandler<RejectSupplyCommand, Unit>
+public class RejectSupplyHandler(AppDbContext dbContext,IAnalStash analStash) : IRequestHandler<RejectSupplyCommand, Unit>
 {
     public async Task<Unit> Handle(RejectSupplyCommand cmd, CancellationToken cnt)
     {
@@ -29,7 +30,9 @@ public class RejectSupplyHandler(AppDbContext dbContext) : IRequestHandler<Rejec
         supply.SupplyStatus = (int)SupplyStatus.Denial;
         
         await dbContext.SaveChangesAsync(cnt);
-
+        
+        await analStash.AddSupplyAsync(supply.RestaurantId, new { supply.Id, Status = "Rejected" }, DateTime.UtcNow);
+        
         return Unit.Value;
     }
 }
