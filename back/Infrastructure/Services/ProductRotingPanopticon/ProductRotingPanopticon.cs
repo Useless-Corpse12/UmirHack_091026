@@ -4,6 +4,7 @@ using back.Domain.Entities;
 using back.Infrastructure.Services.DaikonBaseContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Abstractions;
 
 namespace back.Infrastructure.Services.Workers;
 
@@ -16,7 +17,7 @@ public interface IRotScheduler
     Task CancelAsync(Guid supplyId, Guid productId);
 }
 
-public class RotScheduler : IRotScheduler
+public class RotScheduler: IRotScheduler
 {
     private readonly ISchedulerFactory _schedulerFactory;
     private readonly IServiceProvider _serviceProvider;
@@ -171,5 +172,6 @@ public class RotCheckJob : IJob
             ProductId = productId, 
             Quantity = productInStock.Quantity 
         }, DateTime.UtcNow);
+        
     }
 }

@@ -1,5 +1,6 @@
 ﻿using back.Data;
 using back.Domain.Entities;
+using back.Infrastructure.Services;
 using back.Infrastructure.Services.DaikonBaseContext;
 using MediatR;
 
@@ -8,7 +9,8 @@ namespace back.Application.RestaurantArea.POS.CreateOrder;
 public class CreateOrderHandler(
     AppDbContext dbContext,
     IFoodStock foodStock,
-    IAnalStash analStash)
+    IAnalStash analStash,
+    INotificationService nut)
     : IRequestHandler<CreateOrderCommand, Guid>
 {
     public async Task<Guid> Handle(CreateOrderCommand cmd, CancellationToken cnt)
@@ -53,7 +55,8 @@ public class CreateOrderHandler(
             order.Status, 
             ItemsCount = order.Items.Count 
         }, order.CreatedAt);
-
+        
+        await nut.NotifyAnalyticsChangedAsync(cmd.RestaurantId);
         return order.Id;
     }
 }

@@ -1,5 +1,6 @@
 ﻿using back.Data;
 using back.Domain.Entities;
+using back.Infrastructure.Services;
 using back.Infrastructure.Services.DaikonBaseContext;
 using back.Infrastructure.Services.Workers;
 using MediatR;
@@ -11,7 +12,8 @@ public class AcceptSupplyHandler(
     AppDbContext dbContext, 
     IFoodStock foodStock,
     IRotScheduler rotScheduler,
-    IAnalStash analStash
+    IAnalStash analStash,
+    INotificationService nut
 ) : IRequestHandler<AcceptSupplyCommand, Unit>
 {
     public async Task<Unit> Handle(AcceptSupplyCommand cmd, CancellationToken cnt)
@@ -103,7 +105,12 @@ public class AcceptSupplyHandler(
                 }, supply.CreatedAt);
             }
         }
-
+        
+        await nut.NotifyAnalyticsChangedAsync(supply.RestaurantId);
+        await nut.NotifyStopListChangedAsync(supply.RestaurantId);
+        await nut.NotifyProductsChangedAsync(supply.RestaurantId);
+        await nut.NotifyRecommendationsChangedAsync(supply.RestaurantId);
+        
         return Unit.Value;
     }
 }

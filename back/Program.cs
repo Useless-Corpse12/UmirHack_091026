@@ -2,11 +2,13 @@ using System.Text;
 using back.Data;
 using back.Infrastructure.Security.Hasher;
 using back.Infrastructure.Security.JwtTokenGenerator;
+using back.Infrastructure.Services;
 using back.Infrastructure.Services.DaikonBaseContext;
 using back.Infrastructure.Services.EmailService;
 using back.Infrastructure.Services.VerificationCode;
 using back.Infrastructure.Services.Workers;
 using back.Infrastructure.Services.InviteCodeWorker;
+using back.Presentation.Hubs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -108,6 +110,10 @@ builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
+builder.Services.AddSignalR();
+
+builder.Services.AddScoped<INotificationService, NotificationService>();
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -116,6 +122,9 @@ using (var scope = app.Services.CreateScope())
     await initializer.StockInitializeAsync();
     await initializer.StashInitializeAsync();
 }
+
+
+app.MapHub<NotificationHub>("/hubs/notifications");
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

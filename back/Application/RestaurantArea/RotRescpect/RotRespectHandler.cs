@@ -1,10 +1,11 @@
 using back.Data;
+using back.Infrastructure.Services;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace back.Application.RestaurantArea.RotRescpect;
 
-public class RotRespectHandler(AppDbContext dbContext):IRequestHandler<RotRespectCommand>
+public class RotRespectHandler(AppDbContext dbContext, INotificationService nut):IRequestHandler<RotRespectCommand>
 {
     public async Task Handle(RotRespectCommand cmd, CancellationToken cnt)
     {
@@ -15,5 +16,7 @@ public class RotRespectHandler(AppDbContext dbContext):IRequestHandler<RotRespec
         
         dbContext.RotRecords.Update(rotRecord);
         await dbContext.SaveChangesAsync(cnt);
+        
+        await nut.NotifyAnalyticsChangedAsync(rotRecord.RestaurantId);
     }
 }

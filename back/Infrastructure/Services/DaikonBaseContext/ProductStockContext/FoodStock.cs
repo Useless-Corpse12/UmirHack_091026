@@ -337,7 +337,9 @@ public class FoodStock : IFoodStock
                 results.Add((dishId, dishInfo.Name, Math.Round(totalScore, 2)));
             }
         }
-
+        
+        
+        
         return results.OrderByDescending(r => r.Score).ToList();
     }
     
